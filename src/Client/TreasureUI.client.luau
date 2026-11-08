@@ -28,8 +28,12 @@ frame.Position = UDim2.new(0, 16, 0.5, -230)
 frame.CanvasSize = UDim2.new(0, 0, 0, 0)
 frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 frame.Parent = gui
-frame.Visible = false -- default terlipat agar layar lega; buka via tombol peta / HUD
+-- visibilitas awal diatur UiPanels.Register di bawah (default terlipat)
 UiThemeT.DecoratePanel(frame)
+local frameCapT = Instance.new("UISizeConstraint")
+frameCapT.MaxSize = Vector2.new(380, 620)
+frameCapT.MinSize = Vector2.new(240, 200)
+frameCapT.Parent = frame
 
 -- Tombol lipat panel harta karun
 local toggleBtn = Instance.new("TextButton")
@@ -48,6 +52,9 @@ UiPanelsT.Register("treasure", function(v)
 	frame.Visible = v
 	toggleBtn.Text = v and "X" or "M"
 end, false)
+gui.Destroying:Connect(function()
+	UiPanelsT.Unregister("treasure")
+end)
 
 local layout = Instance.new("UIListLayout")
 layout.Parent = frame

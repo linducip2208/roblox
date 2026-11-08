@@ -119,6 +119,35 @@ print(f"\nRINGKASAN: {len(passes)} PASS, {len(fails)} FAIL")
 if fails:
     print("FAIL:", ", ".join(fails))
 
+# UiPanels: tiap panel terdaftar tepat 1x, nama sesuai kontrak, toggle via registry
+client_src = {k: v for k, v in luas.items() if k.startswith("Client/")}
+regs = []
+for name, t in client_src.items():
+    regs += [(name, m) for m in re.findall(r'UiPanelsT?\.Register\("(\w+)"', t)]
+names = [n for _, n in regs]
+check("ui-registry-once", sorted(names) == ["profile", "shop", "treasure"],
+      f"terdaftar: {sorted(names)}")
+toggles_all = sum(len(re.findall(r"UiPanelsT?\.Toggle\s*\(", t)) for t in client_src.values())
+toggles_lit = []
+for t in client_src.values():
+    toggles_lit += re.findall(r'UiPanelsT?\.Toggle\("(\w+)"', t)
+# panggilan dinamis (variabel) hanya sah dari helper nav yg argumennya literal terdaftar:
+nav_calls = []
+for t in client_src.values():
+    nav_calls += re.findall(r'navBtn\("([^"]+)",\s*"(\w+)"', t)
+check("ui-registry-toggles",
+    toggles_all >= 4 and all(n in names for n in toggles_lit)
+    and all(n in names for _, n in nav_calls),
+    f"{toggles_all} Toggle via registry (nav: {sorted(set(n for _, n in nav_calls))})")
+frame_direct = 0
+for name, t in client_src.items():
+    for i, ln in enumerate(t.splitlines()):
+        s = ln.strip()
+        if re.match(r"frame\.Visible\s*=", s) and "UiPanels" not in "\n".join(t.splitlines()[max(0, i-6):i+1]):
+            # izinkan hanya di dalam callback Register (6 baris di atas ada kata Register)
+            frame_direct += 1
+check("ui-no-rogue-visible", frame_direct == 0, f"{frame_direct} assignment langsung di luar registry")
+
 # Gerbang Selene + StyLua (lewati jika biner tidak ada di mesin ini)
 import subprocess
 

@@ -23,6 +23,10 @@ frame.CanvasSize = UDim2.new(0, 0, 0, 0)
 frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 frame.Parent = gui
 UiTheme.DecoratePanel(frame)
+local frameCapI = Instance.new("UISizeConstraint")
+frameCapI.MaxSize = Vector2.new(340, 600)
+frameCapI.MinSize = Vector2.new(240, 200)
+frameCapI.Parent = frame
 
 -- Tombol lipat profil
 local toggleBtn = Instance.new("TextButton")
@@ -41,6 +45,9 @@ UiPanels.Register("profile", function(v)
 	frame.Visible = v
 	toggleBtn.Text = v and "X" or "P"
 end, false) -- default terlipat; buka via HUD/nav (eksklusif dengan Shop/Harta)
+gui.Destroying:Connect(function()
+	UiPanels.Unregister("profile")
+end)
 
 local layout = Instance.new("UIListLayout")
 layout.Parent = frame

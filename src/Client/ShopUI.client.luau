@@ -26,6 +26,10 @@ frame.CanvasSize = UDim2.new(0, 0, 0, 0)
 frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 frame.Parent = gui
 UiTheme.DecoratePanel(frame)
+local frameCap = Instance.new("UISizeConstraint")
+frameCap.MaxSize = Vector2.new(380, 640)
+frameCap.MinSize = Vector2.new(240, 200)
+frameCap.Parent = frame
 
 -- Tombol lipat: Shop bisa disembunyikan biar layar lega
 local toggleBtn = Instance.new("TextButton")
@@ -44,6 +48,9 @@ UiPanels.Register("shop", function(v)
 	frame.Visible = v
 	toggleBtn.Text = v and "X" or "+"
 end, true)
+gui.Destroying:Connect(function()
+	UiPanels.Unregister("shop")
+end)
 
 local layout = Instance.new("UIListLayout")
 layout.Parent = frame

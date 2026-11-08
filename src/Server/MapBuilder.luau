@@ -122,8 +122,8 @@ function MapBuilder.Trees()
 		local trunk = Instance.new("Part")
 		trunk.Name = "Trunk" .. i
 		trunk.Shape = Enum.PartType.Cylinder
-		trunk.Size = Vector3.new(2, 8, 8)
-		trunk.CFrame = CFrame.new(x, 5, z) * CFrame.Angles(0, 0, math.rad(90))
+		trunk.Size = Vector3.new(8, 2, 2) -- silinder: sumbu X = tinggi
+		trunk.CFrame = CFrame.new(x, 4.5, z)
 		trunk.Anchored = true
 		trunk.CanCollide = false
 		trunk.Color = TRUNK

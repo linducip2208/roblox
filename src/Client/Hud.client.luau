@@ -9,6 +9,7 @@ local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local UpdateHud = remotes:WaitForChild("UpdateHud")
 
 local player = Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
 local gui = Instance.new("ScreenGui")
 gui.Name = "KebunHud"
 gui.ResetOnSpawn = false
@@ -69,9 +70,19 @@ navBtn("Toko", "shop")
 navBtn("Harta", "treasure")
 navBtn("Profil", "profile")
 
+local lastCash = 0
 UpdateHud.OnClientEvent:Connect(function(data)
 	if data.type == "tick" then
 		local income = tonumber(data.income) or 0
+		local cash = tonumber(data.cash) or 0
+		if cash > lastCash and lastCash > 0 then
+			-- pulse ringan saat uang bertambah
+			TweenService:Create(cashLabel, TweenInfo.new(0.12), { Size = UDim2.new(0, 312, 0, 46) }):Play()
+			task.delay(0.12, function()
+				TweenService:Create(cashLabel, TweenInfo.new(0.12), { Size = UDim2.new(0, 300, 0, 44) }):Play()
+			end)
+		end
+		lastCash = cash
 		cashLabel.Text = "Rp " .. tostring(data.cash)
 		local lock = data.locked and "[KUNCI]" or "[BUKA]"
 		infoLabel.Text = ("+%d/dtk  x%d  %s  Lv%d"):format(income, data.mult or 1, lock, data.level or 1)
