@@ -158,7 +158,6 @@ digBtn.Parent = frame
 UiThemeT.Button(digBtn, UiThemeT.Gold)
 digBtn.TextColor3 = UiThemeT.DarkText
 UiThemeT.Hover(digBtn)
-digBtn.TextColor3 = Color3.fromRGB(20, 20, 20)
 digBtn.MouseButton1Click:Connect(function()
 	local ok, res = RequestDig:InvokeServer()
 	if ok then

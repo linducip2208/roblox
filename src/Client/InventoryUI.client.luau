@@ -44,7 +44,11 @@ end)
 UiPanels.Register("profile", function(v)
 	frame.Visible = v
 	toggleBtn.Text = v and "X" or "P"
-end, false) -- default terlipat; buka via HUD/nav (eksklusif dengan Shop/Harta)
+end, false)
+local camP = workspace.CurrentCamera
+if camP and camP.ViewportSize.X < 700 then
+	UiPanels.SetVisible("profile", false)
+end -- default terlipat; buka via HUD/nav (eksklusif dengan Shop/Harta)
 gui.Destroying:Connect(function()
 	UiPanels.Unregister("profile")
 end)

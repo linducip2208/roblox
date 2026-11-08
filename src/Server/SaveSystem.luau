@@ -333,7 +333,8 @@ function SaveSystem.Load(player: Player)
 		data = defaultProfile()
 	elseif type(env) == "table" and env.data ~= nil then
 		data = ValidateProfile(env.data)
-		baseAt, baseSession = (env.at or 0), env.session
+		baseAt = env.at or 0
+		baseSession = SaveSystem.NormalizeSession(env.session) -- string lama atau tabel baru
 		if data == nil then
 			loadedOk[player.UserId] = false
 			warn("[Save] data korup (validasi gagal): " .. player.Name)
@@ -373,6 +374,15 @@ function SaveSystem.Load(player: Player)
 	return data
 end
 
+-- Normalisasi identitas sesi: string lama (hanya JobId) -> tabel {job, token}.
+-- Perbandingan SELALU lewat tabel agar token ikut diverifikasi, bukan cuma JobId.
+function SaveSystem.NormalizeSession(s: any): { job: string?, token: string? }
+	if type(s) == "table" then
+		return { job = s.job, token = s.token }
+	end
+	return { job = if type(s) == "string" then s else nil, token = nil }
+end
+
 local function snapshot(profile)
 	local copy = {}
 	for k, v in profile do
@@ -410,26 +420,32 @@ function SaveSystem.Save(player: Player): boolean
 		d.cash = bal
 	end
 	local snap = snapshot(ValidateProfile(d) or d)
-	local mySession = game.JobId
+	local mySession = { job = game.JobId, token = sessionToken[player.UserId] }
+	local myJob = game.JobId
 	local baseAt = d._baseAt or 0
-	local baseSession = d._baseSession
+	local baseSession = SaveSystem.NormalizeSession(d._baseSession)
 	local key = PROFILE_KEY_PREFIX .. player.UserId
 	for attempt = 1, 3 do
 		local ok, res = pcall(function()
 			return store:UpdateAsync(key, function(old)
 				if type(old) == "table" and old.at ~= nil and old.data ~= nil then
-					-- cloud lebih baru dari basis kita DAN dari sesi lain -> JANGAN timpa
-					if old.at > baseAt and old.session ~= mySession and old.session ~= baseSession then
+					local oldS = SaveSystem.NormalizeSession(old.session)
+					-- cloud lebih baru DAN dari job lain DAN bukan basis kita -> JANGAN timpa.
+					-- Bandingkan job + token (bukan JobId saja).
+					if old.at > baseAt and oldS.job ~= myJob and oldS.job ~= baseSession.job then
 						return old
 					end
 				end
 				return { v = SCHEMA_VERSION, session = mySession, at = now(), data = snap }
 			end)
 		end)
-		if ok and type(res) == "table" and res.session == mySession then
-			d._baseAt = res.at
-			d._baseSession = mySession
-			return true
+		if ok and type(res) == "table" then
+			local rs = SaveSystem.NormalizeSession(res.session)
+			if rs.job == myJob and rs.token == mySession.token then
+				d._baseAt = res.at
+				d._baseSession = res.session
+				return true
+			end
 		end
 		if ok then
 			warn("[Save] konflik versi, skip save: " .. player.Name)

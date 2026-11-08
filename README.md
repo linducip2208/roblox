@@ -2,7 +2,7 @@
 
 Genre: Simulation idle + Steal (ala Grow a Garden x Steal a Brainrot)
 Target: monetisasi serius, update mingguan Sabtu
-Status: **27 modul Luau, 0 TODO, Selene 0/0, StyLua PASS, `rojo build` sukses, `tools/verify.py` 15/16**
+Status: **31 modul Luau, 0 TODO, Selene 0/0, StyLua PASS, `rojo build` sukses, `tools/verify.py` 20/21**
 
 ## Quick Start (Drive D:)
 1. Install Roblox Studio ke D: — `PowerShell -ExecutionPolicy Bypass -File tools/install-studio-D.ps1` (as Admin)
@@ -19,8 +19,8 @@ python tools/verify.py        # 15 cek: remote, skema, jawaban, ID, aset
 ```
 
 ## Struktur
-- `src/Shared/` — Config, Items (22), ShopRotation, TreasureConfig (tanpa jawaban),
-  AssetMap, UiIcons (helper ikon tombol)
+- `src/Shared/` - Config, Items (22 item + 2 event), ShopRotation, TreasureConfig (tanpa jawaban),
+  AssetMap (105 kunci, 0 terisi = UPLOAD_PENDING), UiTheme (palet+font), UiPanels (registry eksklusif), UiIcons (ikon+fallback)
 - `src/Server/` — Main, Save (fail-closed lock+envelope), Plot, Steal (item lock),
   Money, MapBuilder, Leaderboard, Event (katalog 4), Daily, Redeem, Analytics,
   TreasureService (multi-spot), TreasureAnswers (SERVER ONLY), Inventory, Gamepass

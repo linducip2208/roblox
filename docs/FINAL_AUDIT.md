@@ -1,4 +1,4 @@
-# FINAL AUDIT — v0.7.0 (8 Nov 2026, Master Command 3: tanpa commit)
+# FINAL AUDIT - v0.8.0 (8 Nov 2026, lanjutkan: rapikan tools + selaraskan dok)
 - Selene 0/0, StyLua PASS, build PASS, verify 17/18, aset 34/34 valid.
 - Baru sesi ini: rate limit 15/15 remote, UiPanels+UiTheme konsisten, session lock
   fail-closed + VerifyLock pre-commit, receipt idempoten terverifikasi, rambu 3D,

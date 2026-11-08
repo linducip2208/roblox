@@ -48,6 +48,11 @@ UiPanels.Register("shop", function(v)
 	frame.Visible = v
 	toggleBtn.Text = v and "X" or "+"
 end, true)
+-- Layar sempit (<700px): mulai terlipat agar gameplay terlihat.
+local camS = workspace.CurrentCamera
+if camS and camS.ViewportSize.X < 700 then
+	UiPanels.SetVisible("shop", false)
+end
 gui.Destroying:Connect(function()
 	UiPanels.Unregister("shop")
 end)
@@ -106,7 +111,7 @@ rbBtn.MouseButton1Click:Connect(function()
 end)
 UiTheme.Button(rbBtn, UiTheme.Gold)
 UiTheme.Hover(rbBtn)
-rbBtn.TextColor3 = Color3.fromRGB(20, 20, 20)
+rbBtn.TextColor3 = UiTheme.DarkText
 UiIcons.Attach(rbBtn, "ui-trophy")
 
 local dailyBtn = Instance.new("TextButton")
@@ -131,7 +136,7 @@ redeemBox.PlaceholderText = "Kode redeem..."
 redeemBox.Font = Enum.Font.Gotham
 redeemBox.TextSize = 16
 redeemBox.TextTruncate = Enum.TextTruncate.AtEnd
-redeemBox.BackgroundColor3 = Color3.fromRGB(20, 20, 32)
+redeemBox.BackgroundColor3 = UiTheme.Input
 redeemBox.TextColor3 = UiTheme.Text
 redeemBox.PlaceholderColor3 = UiTheme.Dim
 redeemBox.Parent = frame

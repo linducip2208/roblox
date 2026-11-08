@@ -1,6 +1,8 @@
 -- Tutorial.client.luau — 3 langkah pertama, hanya muncul jika cash kecil + belum rebirth
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local UiTheme = require(Shared:WaitForChild("UiTheme"))
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local UpdateHud = remotes:WaitForChild("UpdateHud")
 
@@ -14,18 +16,19 @@ gui.DisplayOrder = 30
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local label = Instance.new("TextLabel")
-label.Size = UDim2.new(0, 400, 0, 80)
-label.Position = UDim2.new(0.5, -200, 1, -120)
+label.Size = UDim2.new(0.9, 0, 0, 80)
+label.AnchorPoint = Vector2.new(0.5, 1)
+label.Position = UDim2.new(0.5, 0, 1, -100)
 label.Font = Enum.Font.GothamBold
 label.TextSize = 16
 label.TextWrapped = true
 label.TextTruncate = Enum.TextTruncate.AtEnd
-label.TextWrapped = true
-label.BackgroundColor3 = Color3.fromRGB(28, 28, 42)
+label.BackgroundColor3 = UiTheme.Bg
 label.BackgroundTransparency = 0.15
-label.TextColor3 = Color3.fromRGB(255, 255, 255)
+label.TextColor3 = UiTheme.Text
 label.Text = "1. Buka SHOP kanan -> beli Cabai 2. Tunggu tumbuh 3. Kunci base"
 label.Parent = gui
+UiTheme.Corner(label, 8)
 
 UpdateHud.OnClientEvent:Connect(function(d)
 	if done then
