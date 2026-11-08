@@ -4,6 +4,7 @@
 local DataStoreService = game:GetService("DataStoreService")
 local MemoryStoreService = game:GetService("MemoryStoreService")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
 local Config = require(game.ReplicatedStorage.Shared.Config)
@@ -140,10 +141,19 @@ local function totalCps(profile): number
 	return sum
 end
 
--- ============ SESSION LOCK (atomik, fail-closed) ============
+-- ============ SESSION LOCK (atomik, fail-closed + mode ephemeral Studio) ============
 -- Akuisisi via UpdateAsync: transform atomik, hanya menang jika kosong/kedaluwarsa/milik sendiri.
+-- Pengecualian: Studio unpublished tidak punya MemoryStore/DataStore. Jika dipaksa
+-- fail-closed, game TIDAK BISA di-Play-test lokal sama sekali. Maka di Studio saja:
+-- beri lock ephemeral (memori saja, tidak pernah sentuh DataStore). Aman karena
+-- RunService:IsStudio() tidak bisa dipalsukan exploiter di server produksi.
 function SaveSystem.ClaimSession(player: Player): (boolean, string?)
 	if sessionMap == nil then
+		if RunService:IsStudio() then
+			warn("[Save] Mode EPHEMERAL (Studio tanpa MemoryStore): progres sesi ini saja.")
+			sessionToken[player.UserId] = "STUDIO_EPHEMERAL"
+			return true, nil
+		end
 		return false, "lock_unavailable_coba_lagi"
 	end
 	local uid = player.UserId
@@ -275,6 +285,14 @@ local function readEnvelope(key: string): any
 end
 
 function SaveSystem.Load(player: Player)
+	-- Mode ephemeral Studio: lewati DataStore sepenuhnya, profil fresh per sesi.
+	if sessionToken[player.UserId] == "STUDIO_EPHEMERAL" then
+		local data = defaultProfile()
+		data.offlineEarned = 0
+		cache[player.UserId] = data
+		loadedOk[player.UserId] = true
+		return data
+	end
 	local key = PROFILE_KEY_PREFIX .. player.UserId
 	local env, err = readEnvelope(key)
 	if env == nil and err == "unavailable" then
@@ -339,6 +357,9 @@ function SaveSystem.Save(player: Player): boolean
 	if sessionToken[player.UserId] == nil then
 		warn("[Save] skip save (tanpa session lock): " .. player.Name)
 		return false
+	end
+	if sessionToken[player.UserId] == "STUDIO_EPHEMERAL" then
+		return true -- sesi lokal Studio: anggap tersimpan (memori), tanpa tulis DataStore
 	end
 	local lockOk, lockErr = SaveSystem.VerifyLock(player)
 	if not lockOk then

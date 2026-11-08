@@ -9,6 +9,8 @@
    label stok + countdown restock 10 dtk di ShopUI.
 4. SafeZone cek `FindFirstChild(SafeZoneName, true)` — jika nama diganti di MapBuilder,
    steal diizinkan di mana saja. Jaga nama "TradePlaza" konsisten.
+5. Mode EPHEMERAL Studio (unpublished): profil hanya di memori, tidak tersimpan.
+   Untuk uji save/load sungguhan: publish private + aktifkan Studio Access to APIs.
 5. Tutorial statis 3 langkah; belum cover treasure. Cukup untuk BETA.
 6. ComfyUI batch: jika VRAM habis di tengah batch, file sudah jadi aman, lanjutkan
    manual dari `manifest.json` (status per file).
