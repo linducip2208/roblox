@@ -43,7 +43,9 @@ function PlotVisuals.Refresh(plotBase: BasePart, slots: any, Items: any, PlotMan
 			p.Parent = plotBase
 			-- jika AssetMap sudah diisi, tempel Decal (tetap jalan tanpa aset)
 			if AssetMap then
-				local mutKey = (slot.mutation and slot.mutation ~= "Normal") and (slot.itemId .. "-" .. string.lower(slot.mutation)) or nil
+				local mutKey = (slot.mutation and slot.mutation ~= "Normal")
+						and (slot.itemId .. "-" .. string.lower(slot.mutation))
+					or nil
 				local id = (mutKey and AssetMap.Get(mutKey)) or AssetMap.Get(slot.itemId)
 				if id then
 					local d = Instance.new("Decal")

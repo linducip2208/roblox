@@ -51,10 +51,17 @@ function EventManager.Start(minutes: number?, eventKey: string?)
 	EventManager.CurrentKey = eventKey
 	EventManager.Active = true
 	EventManager.EndsAt = os.time() + minutes * 60
-	getEventRemote():FireAllClients({ active = true, endsAt = EventManager.EndsAt, name = def.Name, mult = def.IncomeMultiplier })
+	getEventRemote():FireAllClients({
+		active = true,
+		endsAt = EventManager.EndsAt,
+		name = def.Name,
+		mult = def.IncomeMultiplier,
+	})
 	print(("[Event] %s mulai %d mnt"):format(def.Name, minutes))
 	task.delay(minutes * 60, function()
-		if myGen ~= gen then return end -- sudah diganti event baru
+		if myGen ~= gen then
+			return
+		end -- sudah diganti event baru
 		EventManager.Active = false
 		getEventRemote():FireAllClients({ active = false, name = def.Name })
 	end)

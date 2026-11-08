@@ -9,7 +9,9 @@ function MapBuilder.Build()
 		f.Parent = workspace
 	end
 	local plots = workspace:FindFirstChild("Plots")
-	if #plots:GetChildren() >= 8 then return end -- sudah dibangun
+	if #plots:GetChildren() >= 8 then
+		return
+	end -- sudah dibangun
 
 	local radius = 60
 	for i = 1, 8 do

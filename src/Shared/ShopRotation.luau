@@ -16,13 +16,20 @@ function ShopRotation.TimeLeft(): number
 end
 
 local function rarityWeight(rarity: string): number
-	if rarity == "Common" then return 100
-	elseif rarity == "Uncommon" then return 60
-	elseif rarity == "Rare" then return 30
-	elseif rarity == "Epic" then return 12
-	elseif rarity == "Legendary" then return 4
-	elseif rarity == "Mythic" then return 2
-	else return 1 -- Secret selalu langka
+	if rarity == "Common" then
+		return 100
+	elseif rarity == "Uncommon" then
+		return 60
+	elseif rarity == "Rare" then
+		return 30
+	elseif rarity == "Epic" then
+		return 12
+	elseif rarity == "Legendary" then
+		return 4
+	elseif rarity == "Mythic" then
+		return 2
+	else
+		return 1 -- Secret selalu langka
 	end
 end
 

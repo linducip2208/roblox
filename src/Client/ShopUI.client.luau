@@ -125,7 +125,7 @@ for _, def in Items.List do
 end
 
 function refreshStock()
-	local ok, data = pcall(function() 
+	local ok, data = pcall(function()
 		return RequestStock:InvokeServer()
 	end)
 	if not ok or type(data) ~= "table" then

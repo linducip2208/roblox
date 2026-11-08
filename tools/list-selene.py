@@ -1,7 +1,8 @@
 import re, pathlib, subprocess
+from repo import BASE
 r = subprocess.run(
-    [r"D:\project laravel\roblox\tools\selene\selene.exe", r"D:\project laravel\roblox\src"],
-    capture_output=True, text=True, cwd=r"D:\project laravel\roblox")
+    [str(BASE) + r"\tools\selene\selene.exe", str(BASE) + r"\src"],
+    capture_output=True, text=True, cwd=str(BASE) + r"")
 txt = r.stdout + r.stderr
 chunks = re.split(r"\n(?=warning\[|error\[)", txt)
 n = 0

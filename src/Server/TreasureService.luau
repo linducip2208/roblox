@@ -67,9 +67,14 @@ function TreasureService.PublicRiddle(profile)
 	if not r then
 		return nil
 	end
-	return { Id = r.Id, Q = r.Q, Choices = r.Choices,
+	return {
+		Id = r.Id,
+		Q = r.Q,
+		Choices = r.Choices,
 		HintsUsed = profile.treasure.hintsUsed[r.Id] or 0,
-		Solved = false, Zone = nil }
+		Solved = false,
+		Zone = nil,
+	}
 end
 
 function TreasureService.SubmitAnswer(uid: number, profile, riddleId: string, choiceIdx: number): (boolean, any)
@@ -155,7 +160,9 @@ function TreasureService.RequestHint(profile, riddleId: string, playerCash: numb
 		return true, (used == 0 and def.Hint1 or def.Hint2), 0
 	else
 		if playerCash < TConfig.Hint.CostCoins then
-			return false, ("tunggu_%ds_atau_bayar_%d"):format(TConfig.Hint.CooldownSecs - sinceHint, TConfig.Hint.CostCoins), 0
+			return false,
+				("tunggu_%ds_atau_bayar_%d"):format(TConfig.Hint.CooldownSecs - sinceHint, TConfig.Hint.CostCoins),
+				0
 		end
 		t.hintsUsed[riddleId] = used + 1
 		t.lastHintAt = os.time()

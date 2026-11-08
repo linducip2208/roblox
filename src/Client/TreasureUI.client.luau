@@ -44,7 +44,11 @@ for i = 1, 4 do
 	b.MouseButton1Click:Connect(function()
 		local ok, res = SubmitAnswer:InvokeServer(currentId, i)
 		if ok then
-			qLabel.Text = ("Benar! Zona: %s +%d koin +%d kunci. Beli sekop+kompas lalu gali!"):format(res.Zone, res.RewardCash, res.RewardKey)
+			qLabel.Text = ("Benar! Zona: %s +%d koin +%d kunci. Beli sekop+kompas lalu gali!"):format(
+				res.Zone,
+				res.RewardCash,
+				res.RewardKey
+			)
 			refresh()
 		else
 			qLabel.Text = "Gagal: " .. tostring(res)

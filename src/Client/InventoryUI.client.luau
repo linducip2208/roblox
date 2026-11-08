@@ -37,21 +37,26 @@ info.Parent = frame
 -- ID produk diambil dari server (0 = tampil "segera hadir", aman, tidak hardcode).
 local ids = { gpDouble = 0, gpVip = 0, pLuck = 0, pUnlock = 0 }
 local function refresh()
-	local ok, d = pcall(function() 
+	local ok, d = pcall(function()
 		return RequestInventory:InvokeServer()
 	end)
 	if ok and type(d) == "table" then
-		ids.gpDouble, ids.gpVip, ids.pLuck, ids.pUnlock =
-			d.gpDouble or 0, d.gpVip or 0, d.pLuck or 0, d.pUnlock or 0
+		ids.gpDouble, ids.gpVip, ids.pLuck, ids.pUnlock = d.gpDouble or 0, d.gpVip or 0, d.pLuck or 0, d.pUnlock or 0
 		info.Text = ("Rp%d | Rebirth x%d | Lv%d\nKunci:%d Sekop:%s Kompas:%s\nTeka-teki %d/10, Harta %d/10\nLuck:%s"):format(
-			d.cash or 0, d.rebirths or 0, d.level or 1, d.keys or 0,
-			(d.hasShovel and "ya" or "tdk"), (d.hasCompass and "ya" or "tdk"),
-			d.riddlesSolved or 0, d.treasuresFound or 0, (d.luck and "AKTIF" or "-"))
+			d.cash or 0,
+			d.rebirths or 0,
+			d.level or 1,
+			d.keys or 0,
+			(d.hasShovel and "ya" or "tdk"),
+			(d.hasCompass and "ya" or "tdk"),
+			d.riddlesSolved or 0,
+			d.treasuresFound or 0,
+			(d.luck and "AKTIF" or "-")
+		)
 	end
 end
 
 -- (tombol gamepass/devproduct dibuat dinamis oleh idBtn di bawah)
-
 
 -- Tombol baca ID dari server saat diklik (0 = "segera hadir", tidak hardcode).
 local function idBtn(text: string, key: string, isProduct: boolean)

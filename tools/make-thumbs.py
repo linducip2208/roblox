@@ -1,7 +1,8 @@
 from PIL import Image, ImageDraw, ImageFont
+from repo import BASE
 import pathlib
 
-out = pathlib.Path(r"D:\project laravel\roblox\assets\out")
+out = pathlib.Path(str(BASE) + r"\assets\out")
 
 def font(sz):
     for p in (r"C:\Windows\Fonts\impact.ttf", r"C:\Windows\Fonts\arialbd.ttf", r"C:\Windows\Fonts\arial.ttf"):

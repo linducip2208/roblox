@@ -27,7 +27,9 @@ local function hookPlot(plot: BasePart)
 			warn("Plot belum ada Owner UserId")
 			return
 		end
-		if victimId == localPlayer.UserId then return end -- tidak bisa curi sendiri
+		if victimId == localPlayer.UserId then
+			return
+		end -- tidak bisa curi sendiri
 		local ok, msg = RequestSteal:InvokeServer(victimId, "")
 		if not ok then
 			warn("Steal gagal: " .. tostring(msg))

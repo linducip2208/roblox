@@ -1,5 +1,6 @@
 import re, pathlib
-raw = pathlib.Path(r"D:\project laravel\roblox\tools\selene-out.txt").read_bytes()
+from repo import BASE
+raw = pathlib.Path(str(BASE) + r"\tools\selene-out.txt").read_bytes()
 t = raw.decode("utf-16", errors="ignore") if raw.startswith(b"\xff\xfe") else raw.decode("utf-8", errors="ignore")
 chunks = re.split(r"\n(?=warning\[|error\[)", t)
 print(len([c for c in chunks if c.strip().startswith(("warning", "error"))]), "temuan")

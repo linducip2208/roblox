@@ -4,8 +4,9 @@ Hanya pola paling aman. Jalankan: python tools/fix-style.py [--check]
 Tanpa --check: tulis perubahan + laporkan.
 """
 import pathlib, re, sys
+from repo import BASE
 
-BASE = pathlib.Path(r"D:\project laravel\roblox\src")
+BASE = pathlib.Path(str(BASE) + r"\src")
 CHECK = "--check" in sys.argv
 changed_files: list[str] = []
 

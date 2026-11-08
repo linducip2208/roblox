@@ -1,7 +1,8 @@
 from PIL import Image, ImageDraw
+from repo import BASE
 import pathlib, math
 
-out = pathlib.Path(r"D:\project laravel\roblox\assets\out")
+out = pathlib.Path(str(BASE) + r"\assets\out")
 out.mkdir(parents=True, exist_ok=True)
 
 # body color, shape, accessory per item — tiap item beda

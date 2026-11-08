@@ -50,7 +50,47 @@ local TreasureService = require(script.Parent.TreasureService)
 local InventoryService = require(script.Parent.InventoryService)
 local TreasureConfig = require(ReplicatedStorage.Shared.TreasureConfig)
 
+local lastPos: { [number]: Vector3 } = {}
+
+-- Rate limit generik per pemain per remote (detik). Defense-in-depth;
+-- service spesifik (steal/treasure) punya cooldown sendiri.
+local rateLast: { [number]: { [string]: number } } = {}
+local RATE_LIMITS: { [string]: number } = {
+	RequestBuy = 1,
+	RequestSteal = 1,
+	RequestRebirth = 3,
+	RequestDig = 2,
+	BuyTool = 1,
+	RequestDaily = 5,
+	RequestRedeem = 3,
+	RequestHint = 2,
+	CompassPing = 2,
+	SubmitAnswer = 3,
+	RequestRiddle = 1,
+}
+local function checkRate(player: Player, name: string): boolean
+	local need = RATE_LIMITS[name]
+	if not need then
+		return true
+	end
+	local uid = player.UserId
+	local m = rateLast[uid]
+	if not m then
+		m = {}
+		rateLast[uid] = m
+	end
+	local t = os.clock()
+	if t - (m[name] or -99) < need then
+		return false
+	end
+	m[name] = t
+	return true
+end
+
 function RequestRedeem.OnServerInvoke(player: Player, code: string)
+	if not checkRate(player, "RequestRedeem") then
+		return false, "terlalu_cepat"
+	end
 	if type(code) ~= "string" or #code > 32 then
 		return false, "kode_salah"
 	end
@@ -68,6 +108,9 @@ function RequestRedeem.OnServerInvoke(player: Player, code: string)
 end
 
 function RequestDaily.OnServerInvoke(player: Player)
+	if not checkRate(player, "RequestDaily") then
+		return false, "terlalu_cepat"
+	end
 	local profile = SaveSystem.Get(player)
 	if not profile then
 		return false, "noload"
@@ -81,18 +124,20 @@ function RequestDaily.OnServerInvoke(player: Player)
 	return true, amount
 end
 
-local lastPos: { [number]: Vector3 } = {}
-
 local function isVip(player: Player): boolean
 	if Config.Gamepasses.VIP == 0 then
 		return false
 	end
-	local ok, owns = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, Config.Gamepasses.VIP)
+	local ok, owns =
+		pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, Config.Gamepasses.VIP)
 	return ok and owns
 end
 
 -- SHOP: beli bibit (cek stok restock 5 mnt)
 function RequestBuy.OnServerInvoke(player: Player, itemId: string)
+	if not checkRate(player, "RequestBuy") then
+		return false, "terlalu_cepat"
+	end
 	if type(itemId) ~= "string" or #itemId > 64 then
 		return false, "invalid"
 	end
@@ -145,6 +190,9 @@ end)
 
 -- REBIRTH: reset items + cash, naik multiplier (syarat skala linear)
 function RequestRebirth.OnServerInvoke(player: Player)
+	if not checkRate(player, "RequestRebirth") then
+		return false, "terlalu_cepat"
+	end
 	local profile = SaveSystem.Get(player)
 	if not profile then
 		return false, "noload"
@@ -165,6 +213,9 @@ end
 
 -- STEAL: auto-pilih item termahal yang grown (client cukup kirim victimUserId)
 function RequestSteal.OnServerInvoke(thief: Player, victimUserId: number, uid: string?)
+	if not checkRate(thief, "RequestSteal") then
+		return false, "terlalu_cepat"
+	end
 	if type(victimUserId) ~= "number" then
 		return false, "victim_off"
 	end
@@ -244,7 +295,7 @@ task.spawn(function()
 				-- income (multiplier mengikuti event aktif)
 				local raw = PlotManager.TickIncome(profile)
 				local mult = 1
-				local okM, m = pcall(function() 
+				local okM, m = pcall(function()
 					return EventManager.Multiplier()
 				end)
 				if okM and type(m) == "number" then
@@ -263,47 +314,57 @@ task.spawn(function()
 				if ch then
 					local victim = Players:GetPlayerByUserId(ch.victimId)
 					if victim then
-						local ok, reason = StealSystem.CanSteal(p, victim)
-						if not ok and reason ~= "cooldown" then
-							-- gagal kecuali cooldown (cooldown dicek di akhir)
-							if reason == "locked" or reason == "toofar" or reason == "safezone" then
-								StealSystem.ClearChannel(p)
-								UpdateHud:FireClient(p, { type = "steal_fail", reason = reason })
-							end
-						elseif (os.clock() - ch.startTime) >= Config.StealChannelTime then
-							-- sukses: pindahkan item (atomik: cek slot dulu, kembalikan slot ASLI jika gagal)
-							local vProfile = SaveSystem.Get(victim)
-							if vProfile then
-								if not PlotManager.FindFreeSlot(profile) then
+						-- thief tidak boleh menjauh dari titik mulai channel (>25 stud = batal)
+						local hrpNow = p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+						if hrpNow and ch.startPos and (hrpNow.Position - ch.startPos).Magnitude > 25 then
+							StealSystem.ClearChannel(p)
+							UpdateHud:FireClient(p, { type = "steal_fail", reason = "moved" })
+						else
+							local ok, reason = StealSystem.CanSteal(p, victim)
+							if not ok and reason ~= "cooldown" then
+								-- gagal kecuali cooldown (cooldown dicek di akhir)
+								if reason == "locked" or reason == "toofar" or reason == "safezone" then
 									StealSystem.ClearChannel(p)
-									UpdateHud:FireClient(p, { type = "steal_fail", reason = "thief_penuh" })
-								else
-									local slotKey: string? = nil
-									for k, slot in vProfile.slots do
-										if slot.uid == ch.uid then
-											slotKey = k
-											break
-										end
-									end
-									local stolen = slotKey and vProfile.slots[slotKey] or nil
-									if stolen and PlotManager.IsGrown(stolen) then
-										vProfile.slots[slotKey] = nil
-										local ok2, _ = PlotManager.AddStolenSlot(profile, stolen)
-										if ok2 then
-											StealSystem.SetCooldown(p)
-											StealSystem.ClearChannel(p)
-											Analytics.Steal()
-											SaveSystem.Save(p)
-											SaveSystem.Save(victim)
-											UpdateHud:FireClient(p, { type = "steal_ok", itemId = stolen.itemId })
-											UpdateHud:FireClient(victim, { type = "stolen", itemId = stolen.itemId, by = p.Name })
-										else
-											-- kembalikan slot ASLI (uid + plantedAt + mutasi utuh)
-											vProfile.slots[slotKey] = stolen
-											StealSystem.ClearChannel(p)
-										end
-									else
+									UpdateHud:FireClient(p, { type = "steal_fail", reason = reason })
+								end
+							elseif (os.clock() - ch.startTime) >= Config.StealChannelTime then
+								-- sukses: pindahkan item (atomik: cek slot dulu, kembalikan slot ASLI jika gagal)
+								local vProfile = SaveSystem.Get(victim)
+								if vProfile then
+									if not PlotManager.FindFreeSlot(profile) then
 										StealSystem.ClearChannel(p)
+										UpdateHud:FireClient(p, { type = "steal_fail", reason = "thief_penuh" })
+									else
+										local slotKey: string? = nil
+										for k, slot in vProfile.slots do
+											if slot.uid == ch.uid then
+												slotKey = k
+												break
+											end
+										end
+										local stolen = slotKey and vProfile.slots[slotKey] or nil
+										if stolen and PlotManager.IsGrown(stolen) then
+											vProfile.slots[slotKey] = nil
+											local ok2, _ = PlotManager.AddStolenSlot(profile, stolen)
+											if ok2 then
+												StealSystem.SetCooldown(p)
+												StealSystem.ClearChannel(p)
+												Analytics.Steal()
+												SaveSystem.Save(p)
+												SaveSystem.Save(victim)
+												UpdateHud:FireClient(p, { type = "steal_ok", itemId = stolen.itemId })
+												UpdateHud:FireClient(
+													victim,
+													{ type = "stolen", itemId = stolen.itemId, by = p.Name }
+												)
+											else
+												-- kembalikan slot ASLI (uid + plantedAt + mutasi utuh)
+												vProfile.slots[slotKey] = stolen
+												StealSystem.ClearChannel(p)
+											end
+										else
+											StealSystem.ClearChannel(p)
+										end
 									end
 								end
 							end
@@ -420,6 +481,9 @@ function RequestStock.OnServerInvoke(_player: Player)
 end
 
 function RequestRiddle.OnServerInvoke(player: Player)
+	if not checkRate(player, "RequestRiddle") then
+		return nil
+	end
 	local profile = SaveSystem.Get(player)
 	if not profile then
 		return nil
@@ -428,6 +492,9 @@ function RequestRiddle.OnServerInvoke(player: Player)
 end
 
 function SubmitAnswer.OnServerInvoke(player: Player, riddleId: string, choiceIdx: number)
+	if not checkRate(player, "SubmitAnswer") then
+		return false, "terlalu_cepat"
+	end
 	local profile = SaveSystem.Get(player)
 	if not profile then
 		return false, "noload"
@@ -454,6 +521,9 @@ function SubmitAnswer.OnServerInvoke(player: Player, riddleId: string, choiceIdx
 end
 
 function RequestHint.OnServerInvoke(player: Player, riddleId: string)
+	if not checkRate(player, "RequestHint") then
+		return false, "terlalu_cepat"
+	end
 	local profile = SaveSystem.Get(player)
 	if not profile then
 		return false, "noload"
@@ -476,6 +546,9 @@ function RequestHint.OnServerInvoke(player: Player, riddleId: string)
 end
 
 function CompassPing.OnServerInvoke(player: Player)
+	if not checkRate(player, "CompassPing") then
+		return false, "ping_cooldown"
+	end
 	local profile = SaveSystem.Get(player)
 	if not profile then
 		return false, "noload"
@@ -484,6 +557,9 @@ function CompassPing.OnServerInvoke(player: Player)
 end
 
 function RequestDig.OnServerInvoke(player: Player)
+	if not checkRate(player, "RequestDig") then
+		return false, "gali_cooldown"
+	end
 	local profile = SaveSystem.Get(player)
 	if not profile then
 		return false, "noload"
@@ -500,6 +576,9 @@ function RequestDig.OnServerInvoke(player: Player)
 end
 
 function BuyTool.OnServerInvoke(player: Player, tool: string)
+	if not checkRate(player, "BuyTool") then
+		return false, "terlalu_cepat"
+	end
 	if type(tool) ~= "string" or #tool > 16 then
 		return false, "tool_invalid"
 	end
@@ -599,10 +678,16 @@ Players.PlayerAdded:Connect(function(p)
 	end)
 end)
 
--- DevProduct beli (Luck / Unlock)
+-- DevProduct beli (Luck / Unlock) — idempoten via PurchaseId
 MarketplaceService.ProcessReceipt = function(info)
 	local player = Players:GetPlayerByUserId(info.PlayerId)
-	if player and GamepassHandler.OnProductBought(player, info.ProductId) then
+	if not player then
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	local ok, granted = pcall(function()
+		return GamepassHandler.OnProductBought(player, info.ProductId, info.PurchaseId)
+	end)
+	if ok and granted then
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end
 	return Enum.ProductPurchaseDecision.NotProcessedYet
@@ -611,6 +696,7 @@ end
 Players.PlayerRemoving:Connect(function(p)
 	releasePlot(p)
 	lastPos[p.UserId] = nil
+	rateLast[p.UserId] = nil
 end)
 
 print("[StealKebun] Main loaded")

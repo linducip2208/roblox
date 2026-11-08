@@ -1,5 +1,6 @@
 import pathlib, re
-cfg = pathlib.Path(r"D:\project laravel\roblox\src\Shared\TreasureConfig.luau")
+from repo import BASE
+cfg = pathlib.Path(str(BASE) + r"\src\Shared\TreasureConfig.luau")
 t = cfg.read_text(encoding="utf-8")
 pairs = re.findall(r'\{\s*Id\s*=\s*"(R\d+)".*?Answer\s*=\s*(\d)', t, re.S)
 print("riddles:", pairs)
@@ -11,7 +12,7 @@ lines = ["-- TreasureAnswers.luau — SERVER ONLY. Jangan require dari client / 
 for rid, ans in pairs:
     lines.append(f'\t{rid} = {ans},')
 lines.append("}")
-srv = pathlib.Path(r"D:\project laravel\roblox\src\Server\TreasureAnswers.luau")
+srv = pathlib.Path(str(BASE) + r"\src\Server\TreasureAnswers.luau")
 srv.write_text("\n".join(lines) + "\n", encoding="utf-8")
 # hapus field Answer dari Shared (tambah komentar)
 t2 = re.sub(r",?\s*Answer\s*=\s*\d,?", "", t)

@@ -21,7 +21,7 @@ local function beep(id: string, vol: number)
 	s.Volume = vol or 0.5
 	s.Parent = workspace
 	s:Play()
-	s.Ended:Connect(function() 
+	s.Ended:Connect(function()
 		s:Destroy()
 	end)
 end
@@ -36,7 +36,7 @@ UpdateHud.OnClientEvent:Connect(function(d)
 	end
 end)
 -- event start: dengarkan EventState
-local ok, ev = pcall(function() 
+local ok, ev = pcall(function()
 	return remotes:WaitForChild("EventState")
 end)
 if ok then

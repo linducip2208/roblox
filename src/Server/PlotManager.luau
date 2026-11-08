@@ -27,9 +27,12 @@ function PlotManager.Plant(profile, itemId: string): (boolean, string?)
 	-- roll mutasi: Normal 70 / Gold 15 / Dark 10 / Rainbow 5
 	local roll = math.random(100)
 	local mut = "Normal"
-	if roll > 95 then mut = "Rainbow"
-	elseif roll > 85 then mut = "Dark"
-	elseif roll > 70 then mut = "Gold"
+	if roll > 95 then
+		mut = "Rainbow"
+	elseif roll > 85 then
+		mut = "Dark"
+	elseif roll > 70 then
+		mut = "Gold"
 	end
 	profile.slots[tostring(slot)] = {
 		uid = HttpService:GenerateGUID(false),

@@ -26,7 +26,7 @@ UpdateHud.OnClientEvent:Connect(function(d)
 	if d.type == "tick" and d.cash and d.cash > 500 then
 		done = true
 		label.Text = "Mantap! Coba curi dari plot teman (tahan E) atau Rebirth di 1jt."
-		task.delay(10, function() 
+		task.delay(10, function()
 			gui:Destroy()
 		end)
 	end

@@ -1,6 +1,7 @@
 from PIL import Image, ImageEnhance
+from repo import BASE
 import pathlib
-out = pathlib.Path(r"D:\project laravel\roblox\assets\out")
+out = pathlib.Path(str(BASE) + r"\assets\out")
 bases = [p for p in out.glob("*.png") if "-" not in p.name and "_" in p.name]
 print("base:", len(bases))
 

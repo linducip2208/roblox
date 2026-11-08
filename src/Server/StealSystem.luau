@@ -5,7 +5,8 @@ local Config = require(game.ReplicatedStorage.Shared.Config)
 local StealSystem = {}
 local locks: { [number]: number } = {} -- victimId -> unlock time
 local cooldowns: { [number]: number } = {} -- thiefId -> next allowed time
-local channels: { [number]: any } = {} -- thiefId -> { victimId, uid, startTime }
+local channels: { [number]: any } = {} -- thiefId -> { victimId, uid, startTime, startPos }
+local itemLocks: { [string]: number } = {} -- itemUid -> thiefId (cegah 2 thief 1 item)
 
 local function charPos(player: Player)
 	local c = player.Character
@@ -80,6 +81,11 @@ function StealSystem.RequestSteal(thief: Player, victim: Player, uid: string): (
 	if not ok then
 		return false, err
 	end
+	local holder = itemLocks[uid]
+	if holder ~= nil and holder ~= thief.UserId then
+		return false, "item_diperebutkan"
+	end
+	itemLocks[uid] = thief.UserId
 	channels[thief.UserId] = { victimId = victim.UserId, uid = uid, startTime = os.clock(), startPos = charPos(thief) }
 	return true, "channel_started"
 end
@@ -90,6 +96,10 @@ function StealSystem.PollChannel(thief: Player): any?
 end
 
 function StealSystem.ClearChannel(thief: Player)
+	local ch = channels[thief.UserId]
+	if ch and itemLocks[ch.uid] == thief.UserId then
+		itemLocks[ch.uid] = nil
+	end
 	channels[thief.UserId] = nil
 end
 
@@ -100,6 +110,10 @@ end
 Players.PlayerRemoving:Connect(function(p)
 	locks[p.UserId] = nil
 	cooldowns[p.UserId] = nil
+	local ch = channels[p.UserId]
+	if ch and itemLocks[ch.uid] == p.UserId then
+		itemLocks[ch.uid] = nil
+	end
 	channels[p.UserId] = nil
 end)
 

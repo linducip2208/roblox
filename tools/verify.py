@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Automated QA untuk Steal a Kebun. Keluar: PASS/FAIL per cek + exit code.
-Jalankan: python tools/verify.py"""
+"""Automated QA untuk Steal a Kebun. Portabel: path dihitung dari lokasi script.
+Keluar: PASS/FAIL per cek + exit code.
+Jalankan dari mana saja: python <repo>/tools/verify.py"""
 import json, pathlib, re, sys
 
-BASE = pathlib.Path(r"D:\project laravel\roblox")
+BASE = pathlib.Path(__file__).resolve().parents[1]
 SRC = BASE / "src"
 fails: list[str] = []
 passes: list[str] = []
@@ -110,8 +111,11 @@ if fails:
 # Gerbang Selene (lewati jika biner tidak ada di mesin ini)
 import subprocess
 try:
+    exe = BASE / "tools" / "selene" / "selene.exe"
+    if not exe.exists():
+        exe = "selene"  # coba PATH
     r = subprocess.run(
-        [str(BASE / "tools" / "selene" / "selene.exe"), str(SRC)],
+        [str(exe), str(SRC)],
         capture_output=True, text=True, cwd=str(BASE), timeout=120)
     out = (r.stdout or "") + (r.stderr or "")
     n_err = out.count("error[")

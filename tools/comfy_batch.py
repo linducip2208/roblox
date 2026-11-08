@@ -4,10 +4,11 @@ Output: assets/generated/<kategori>/*.png + manifest.json
 Jalankan: python tools/comfy_batch.py  (lama: ~15-25 mnt, 26 gambar)
 """
 import json, os, random, sys, time, urllib.request, urllib.error
+from repo import BASE
 import pathlib
 
 COMFY = "http://127.0.0.1:8188"
-OUT = pathlib.Path(r"D:\project laravel\roblox\assets\generated")
+OUT = pathlib.Path(str(BASE) + r"\assets\generated")
 CKPT = "sdxl_lightning_8step.safetensors"
 
 STYLE_ICON = ("bright stylized 3d cartoon toy render, soft studio lighting, vibrant colors, "

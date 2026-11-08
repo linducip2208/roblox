@@ -35,17 +35,32 @@ function GamepassHandler.GrantLuck(player: Player, minutes: number)
 	end
 end
 
--- dipanggil dari Main saat ProcessReceipt DevProduct
-function GamepassHandler.OnProductBought(player: Player, productId: number)
+-- dipanggil dari Main saat ProcessReceipt DevProduct (hanya server).
+-- Idempoten via PurchaseId: satu receipt tidak pernah dobel grant.
+function GamepassHandler.OnProductBought(player: Player, productId: number, purchaseId: string?): boolean
+	if productId ~= Config.Products.LuckBoost15m and productId ~= Config.Products.UnlockInstant then
+		return false -- unknown product: tanpa hadiah
+	end
+	local SaveSystem = require(script.Parent:WaitForChild("SaveSystem"))
+	local profile = SaveSystem.Get(player)
+	if not profile then
+		return false -- pemain belum loaded: NotProcessedYet agar dicoba lagi
+	end
+	profile.receipts = profile.receipts or {}
+	if purchaseId and profile.receipts[purchaseId] then
+		return true -- sudah diberi sebelumnya
+	end
 	if productId == Config.Products.LuckBoost15m then
 		GamepassHandler.GrantLuck(player, 15)
-		return true
-	elseif productId == Config.Products.UnlockInstant then
+	else
 		local StealSystem = require(script.Parent:WaitForChild("StealSystem"))
 		StealSystem.Unlock(player)
-		return true
 	end
-	return false
+	if purchaseId then
+		profile.receipts[purchaseId] = true
+	end
+	SaveSystem.Save(player)
+	return true
 end
 
 game.Players.PlayerRemoving:Connect(function(p)

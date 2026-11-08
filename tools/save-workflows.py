@@ -2,11 +2,12 @@
 """Tulis ulang 3 workflow API ComfyUI dari comfy_batch.py ke assets/workflows/*.json.
 Jalankan sekali: python tools/save-workflows.py"""
 import json, pathlib
+from repo import BASE
 import sys
-sys.path.insert(0, r"D:\project laravel\roblox\tools")
+sys.path.insert(0, str(BASE) + r"\tools")
 from comfy_batch import workflow, NEG, CKPT
 
-OUT = pathlib.Path(r"D:\project laravel\roblox\assets\workflows")
+OUT = pathlib.Path(str(BASE) + r"\assets\workflows")
 OUT.mkdir(parents=True, exist_ok=True)
 (OUT / "plant_icon.json").write_text(json.dumps(
     workflow("CONTOH: red chili chibi character, cute fruit mascot", NEG, 1024, 1024, 42), indent=1))

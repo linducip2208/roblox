@@ -22,7 +22,12 @@ function MoneyService.RefreshMultiplier(player: Player, profile)
 	local m = baseMultiplier(profile)
 	-- 2x gamepass
 	if Config.Gamepasses.DoubleMoney ~= 0 then
-		local ok, owns = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, Config.Gamepasses.DoubleMoney)
+		local ok, owns = pcall(
+			MarketplaceService.UserOwnsGamePassAsync,
+			MarketplaceService,
+			player.UserId,
+			Config.Gamepasses.DoubleMoney
+		)
 		if ok and owns then
 			m *= 2
 		end
@@ -39,8 +44,12 @@ function MoneyService.GetMultiplier(player: Player): number
 end
 
 -- reason dipakai untuk audit exploit. Return new balance. Tidak pernah throw.
+local function finite(n: any): boolean
+	return type(n) == "number" and n == n and n ~= math.huge and n ~= -math.huge
+end
+
 function MoneyService.Add(player: Player, rawAmount: number, reason: string): number
-	if type(rawAmount) ~= "number" or rawAmount < 0 then
+	if not finite(rawAmount) or rawAmount < 0 then
 		warn(("[Money] Add invalid %s %s %s"):format(tostring(rawAmount), player.Name, tostring(reason)))
 		return balances[player.UserId] or 0
 	end
@@ -57,7 +66,7 @@ function MoneyService.Add(player: Player, rawAmount: number, reason: string): nu
 end
 
 function MoneyService.Spend(player: Player, amount: number): boolean
-	if type(amount) ~= "number" or amount <= 0 then
+	if not finite(amount) or amount <= 0 then
 		return false
 	end
 	local b = balances[player.UserId] or 0
