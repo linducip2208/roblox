@@ -8,3 +8,6 @@ tools/selene-out.txt
 *.tmp
 
 __pycache__/
+
+tools/stylua/
+tools/stylua.zip
