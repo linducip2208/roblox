@@ -326,6 +326,11 @@ local RequestHint = getOrCreate("RequestHint", "RemoteFunction")
 local CompassPing = getOrCreate("CompassPing", "RemoteFunction")
 local RequestDig = getOrCreate("RequestDig", "RemoteFunction")
 local BuyTool = getOrCreate("BuyTool", "RemoteFunction")
+local RequestStock = getOrCreate("RequestStock", "RemoteFunction")
+
+function RequestStock.OnServerInvoke(player: Player)
+	return { stock = ShopRotation.Stock, secs = ShopRotation.TimeLeft() }
+end
 
 function RequestRiddle.OnServerInvoke(player: Player)
 	local profile = SaveSystem.Get(player)

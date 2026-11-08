@@ -82,7 +82,18 @@ redeemBox.FocusLost:Connect(function(enter)
 	redeemBox.Text = ok and ("+Rp" .. tostring(res)) or ("Gagal: " .. tostring(res))
 end)
 
+local RequestStock = remotes:WaitForChild("RequestStock") :: RemoteFunction
+local stockLabel = Instance.new("TextLabel")
+stockLabel.Size = UDim2.new(1, 0, 0, 26)
+stockLabel.TextScaled = true
+stockLabel.Text = "Stok: ..."
+stockLabel.Parent = frame
+
 -- daftar item (Secret disembunyikan: hanya via steal)
+local itemBtns: { [string]: any } = {}
+local function baseText(def)
+	return ("%s [%s] Rp%d -> %d/s"):format(def.Name, def.Rarity, def.Cost, def.CashPerSec)
+end
 for _, def in Items.List do
 	if def.Rarity == "Secret" then
 		continue
@@ -90,20 +101,47 @@ for _, def in Items.List do
 	local b = Instance.new("TextButton")
 	b.Size = UDim2.new(1, 0, 0, 50)
 	b.TextScaled = true
-	b.Text = ("%s [%s] Rp%d -> %d/s"):format(def.Name, def.Rarity, def.Cost, def.CashPerSec)
+	b.Text = baseText(def)
 	b.Parent = frame
+	itemBtns[def.Id] = { btn = b, def = def }
 	b.MouseButton1Click:Connect(function()
 		local ok, res = RequestBuy:InvokeServer(def.Id)
 		if ok then
 			b.Text = "✅ " .. def.Name
+			refreshStock()
 		else
 			b.Text = "❌ " .. tostring(res)
 			task.delay(1.5, function()
-				b.Text = ("%s [%s] Rp%d"):format(def.Name, def.Rarity, def.Cost)
+				b.Text = baseText(def)
+				refreshStock()
 			end)
 		end
 	end)
 end
+
+function refreshStock()
+	local ok, data = pcall(function() return RequestStock:InvokeServer() end)
+	if not ok or type(data) ~= "table" then return end
+	local stock = data.stock or {}
+	for id, rec in itemBtns do
+		local b, def = rec.btn, rec.def
+		if (def :: any).EventOnly then
+			b.Text = baseText(def) .. " [EVENT]"
+		else
+			local q = stock[id] or 0
+			b.Text = baseText(def) .. (q > 0 and (" (stok %d)"):format(q) or " (HABIS)")
+		end
+	end
+	local s = tonumber(data.secs) or 0
+	stockLabel.Text = ("Restock %d:%02d"):format(math.floor(s / 60), s % 60)
+end
+
+task.spawn(function()
+	while true do
+		refreshStock()
+		task.wait(10)
+	end
+end)
 
 EventState.OnClientEvent:Connect(function(d)
 	if d.active then

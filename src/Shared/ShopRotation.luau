@@ -4,6 +4,14 @@ local Items = require(game.ReplicatedStorage.Shared.Items)
 local ShopRotation = {}
 ShopRotation.RestockInterval = 300 -- 5 menit
 ShopRotation.Stock = {} -- [itemId] = qty tersisa
+ShopRotation.LastRestock = os.time()
+
+function ShopRotation.TimeLeft(): number
+	local elapsed = os.time() - ShopRotation.LastRestock
+	local left = ShopRotation.RestockInterval - elapsed
+	if left < 0 then left = 0 end
+	return left
+end
 
 local function rarityWeight(rarity: string): number
 	if rarity == "Common" then return 100
@@ -50,9 +58,11 @@ end
 -- auto restock
 task.spawn(function()
 	ShopRotation.Restock()
+	ShopRotation.LastRestock = os.time()
 	while true do
 		task.wait(ShopRotation.RestockInterval)
 		ShopRotation.Restock()
+		ShopRotation.LastRestock = os.time()
 	end
 end)
 
