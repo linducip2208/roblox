@@ -3,3 +3,5 @@ game.rbxlx
 tools/rojo/
 tools/rojo.zip
 *.tmp
+
+__pycache__/
