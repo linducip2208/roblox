@@ -270,18 +270,37 @@ function SaveSystem.IsLoaded(player: Player): boolean
 	return loadedOk[player.UserId] == true
 end
 
+-- Klasifikasi error DataStore agar diagnosis jelas (op + jenis).
+local function classifyError(err: any): string
+	local msg = string.lower(tostring(err))
+	if string.find(msg, "throttl", 1, true) then
+		return "throttled"
+	end
+	if string.find(msg, "timeout", 1, true) or string.find(msg, "timed out", 1, true) then
+		return "timeout"
+	end
+	if string.find(msg, "not allowed", 1, true) or string.find(msg, "studio", 1, true) then
+		return "api_disabled"
+	end
+	return "unavailable"
+end
+
 -- Envelope: {v, session, at, data}. Tolak timpa jika cloud lebih baru dari server lain.
+-- Return: data | nil, errKind | nil. errKind = throttled/timeout/api_disabled/unavailable.
 local function readEnvelope(key: string): any
+	local lastErr: any = nil
 	for attempt = 1, 3 do
 		local ok, res = pcall(function()
 			return store:GetAsync(key)
 		end)
 		if ok then
-			return res
+			return res, nil
 		end
+		lastErr = res
+		warn(("[Save] Load:GetAsync gagal (%s) percobaan %d"):format(classifyError(res), attempt))
 		backoff(attempt)
 	end
-	return nil, "unavailable"
+	return nil, classifyError(lastErr)
 end
 
 function SaveSystem.Load(player: Player)
@@ -295,26 +314,45 @@ function SaveSystem.Load(player: Player)
 	end
 	local key = PROFILE_KEY_PREFIX .. player.UserId
 	local env, err = readEnvelope(key)
-	if env == nil and err == "unavailable" then
+	if env == nil and err ~= nil then
+		local kind = err or "unavailable"
 		loadedOk[player.UserId] = false
-		warn("[Save] " .. player.Name .. " BELUM loaded (DataStore down). Save dinonaktifkan.")
+		warn(
+			("[Save] %s BELUM loaded (Load:GetAsync %s). Save dinonaktifkan, TIDAK pakai default."):format(
+				player.Name,
+				kind
+			)
+		)
 		return nil
 	end
+	-- Pemain baru = key kosong (GetAsync sukses, nil). Legacy v1 = tabel mentah berisi cash/slots.
+	-- Bentuk lain = korup -> TOLAK (jangan timpa dengan default).
 	local data = nil
-	if type(env) == "table" and env.data ~= nil then
-		data = ValidateProfile(env.data)
-	elseif env == nil then
-		data = defaultProfile() -- pemain baru
-	else
-		warn("[Save] envelope tak dikenal, pakai default: " .. player.Name)
+	local baseAt, baseSession = 0, nil
+	if env == nil then
 		data = defaultProfile()
+	elseif type(env) == "table" and env.data ~= nil then
+		data = ValidateProfile(env.data)
+		baseAt, baseSession = (env.at or 0), env.session
+		if data == nil then
+			loadedOk[player.UserId] = false
+			warn("[Save] data korup (validasi gagal): " .. player.Name)
+			return nil
+		end
+	elseif type(env) == "table" and (env.cash ~= nil or env.slots ~= nil) then
+		data = ValidateProfile(env) -- migrasi legacy v1 mentah
+		warn("[Save] migrasi profil legacy v1: " .. player.Name)
+	else
+		loadedOk[player.UserId] = false
+		warn("[Save] envelope tak dikenal (kemungkinan korup), TOLAK load: " .. player.Name)
+		return nil
 	end
 	if player.Parent == nil then -- disconnect saat load
 		return nil
 	end
 	-- catat basis versi untuk deteksi konflik saat save
-	data._baseAt = if type(env) == "table" then (env.at or 0) else 0
-	data._baseSession = if type(env) == "table" then env.session else nil
+	data._baseAt = baseAt
+	data._baseSession = baseSession
 
 	-- Offline growth
 	local last = num(data.lastLogout, now(), 0, now())

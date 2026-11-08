@@ -4,6 +4,10 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestInventory = remotes:WaitForChild("RequestInventory") :: RemoteFunction
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local AssetMap = require(Shared:WaitForChild("AssetMap"))
+local UiTheme = require(Shared:WaitForChild("UiTheme"))
+local UiPanels = require(Shared:WaitForChild("UiPanels"))
 
 local player = Players.LocalPlayer
 local gui = Instance.new("ScreenGui")
@@ -17,18 +21,25 @@ frame.Position = UDim2.new(1, -320, 0.5, -190)
 frame.CanvasSize = UDim2.new(0, 0, 0, 0)
 frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 frame.Parent = gui
+UiTheme.DecoratePanel(frame)
 
 -- Tombol lipat profil
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.new(0, 44, 0, 44)
 toggleBtn.Position = UDim2.new(1, -56, 0.5, -22)
-toggleBtn.TextScaled = true
-toggleBtn.Text = "❌"
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.TextSize = 22
+toggleBtn.Text = "X"
 toggleBtn.Parent = gui
+UiTheme.Button(toggleBtn, UiTheme.Panel)
+UiTheme.Hover(toggleBtn)
 toggleBtn.MouseButton1Click:Connect(function()
-	frame.Visible = not frame.Visible
-	toggleBtn.Text = frame.Visible and "❌" or "🎒"
+	UiPanels.Toggle("profile")
 end)
+UiPanels.Register("profile", function(v)
+	frame.Visible = v
+	toggleBtn.Text = v and "X" or "P"
+end, true)
 
 local layout = Instance.new("UIListLayout")
 layout.Parent = frame
@@ -36,16 +47,15 @@ layout.Padding = UDim.new(0, 5)
 
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
-title.TextScaled = true
-title.Text = "🎒 Profil"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 20
+title.TextTruncate = Enum.TextTruncate.AtEnd
+title.Text = "Profil"
 title.Parent = frame
-
-local Shared = ReplicatedStorage:WaitForChild("Shared")
-local AssetMap = require(Shared:WaitForChild("AssetMap"))
-local UiTheme = require(Shared:WaitForChild("UiTheme"))
-UiTheme.Panel(frame)
+UiTheme.Title(title)
 UiTheme.Title(title)
 UiTheme.Button(toggleBtn)
+UiTheme.Hover(toggleBtn)
 
 -- Baris stat: [ikon 28px | teks]. Ikon hanya muncul bila Asset ID sudah diisi
 -- (sebelum upload = teks saja, tidak ada kotak rusak).
@@ -69,7 +79,9 @@ local function statRow(key: string, assetKey: string, placeholder: string)
 	tl.Size = UDim2.new(1, -34, 1, 0)
 	tl.Position = UDim2.new(0, 34, 0, 0)
 	tl.BackgroundTransparency = 1
-	tl.TextScaled = true
+	tl.Font = Enum.Font.GothamBold
+	tl.TextSize = 15
+	tl.TextTruncate = Enum.TextTruncate.AtEnd
 	tl.TextXAlignment = Enum.TextXAlignment.Left
 	tl.Text = placeholder
 	tl.Parent = row
@@ -113,10 +125,13 @@ end
 local function idBtn(text: string, key: string, isProduct: boolean)
 	local b = Instance.new("TextButton")
 	b.Size = UDim2.new(1, 0, 0, 40)
-	b.TextScaled = true
+	b.Font = Enum.Font.GothamBold
+	b.TextSize = 17
+	b.TextTruncate = Enum.TextTruncate.AtEnd
 	b.Text = text .. " (...)"
 	b.Parent = frame
 	UiTheme.Button(b)
+	UiTheme.Hover(b)
 	b.MouseButton1Click:Connect(function()
 		local id = ids[key] or 0
 		if id == 0 then
@@ -152,10 +167,13 @@ end)
 
 local muteBtn = Instance.new("TextButton")
 muteBtn.Size = UDim2.new(1, 0, 0, 40)
-muteBtn.TextScaled = true
+muteBtn.Font = Enum.Font.GothamBold
+muteBtn.TextSize = 17
+muteBtn.TextTruncate = Enum.TextTruncate.AtEnd
 muteBtn.Text = "🔊 Suara: ON"
 muteBtn.Parent = frame
 UiTheme.Button(muteBtn)
+UiTheme.Hover(muteBtn)
 muteBtn.MouseButton1Click:Connect(function()
 	local muted = gui:GetAttribute("Muted") == true
 	gui:SetAttribute("Muted", not muted)

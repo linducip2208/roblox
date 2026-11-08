@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SharedT = ReplicatedStorage:WaitForChild("Shared")
 local UiIconsT = require(SharedT:WaitForChild("UiIcons"))
 local UiThemeT = require(SharedT:WaitForChild("UiTheme"))
+local UiPanelsT = require(SharedT:WaitForChild("UiPanels"))
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestRiddle = remotes:WaitForChild("RequestRiddle") :: RemoteFunction
 local SubmitAnswer = remotes:WaitForChild("SubmitAnswer") :: RemoteFunction
@@ -26,21 +27,26 @@ frame.Position = UDim2.new(0, 16, 0.5, -230)
 frame.CanvasSize = UDim2.new(0, 0, 0, 0)
 frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 frame.Parent = gui
-frame.Visible = false -- default terlipat agar layar lega; buka via tombol peta
-UiThemeT.Panel(frame)
+frame.Visible = false -- default terlipat agar layar lega; buka via tombol peta / HUD
+UiThemeT.DecoratePanel(frame)
 
 -- Tombol lipat panel harta karun
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.new(0, 44, 0, 44)
 toggleBtn.Position = UDim2.new(0, 16, 0, 110)
-toggleBtn.TextScaled = true
-toggleBtn.Text = "🗺️"
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.TextSize = 22
+toggleBtn.Text = "M"
 toggleBtn.Parent = gui
-UiThemeT.Button(toggleBtn)
+UiThemeT.Button(toggleBtn, UiThemeT.Panel)
+UiThemeT.Hover(toggleBtn)
 toggleBtn.MouseButton1Click:Connect(function()
-	frame.Visible = not frame.Visible
-	toggleBtn.Text = frame.Visible and "❌" or "🗺️"
+	UiPanelsT.Toggle("treasure")
 end)
+UiPanelsT.Register("treasure", function(v)
+	frame.Visible = v
+	toggleBtn.Text = v and "X" or "M"
+end, false)
 
 local layout = Instance.new("UIListLayout")
 layout.Parent = frame
@@ -48,8 +54,10 @@ layout.Padding = UDim.new(0, 6)
 
 local qLabel = Instance.new("TextLabel")
 qLabel.Size = UDim2.new(1, 0, 0, 90)
-qLabel.TextScaled = true
+qLabel.Font = Enum.Font.GothamBold
+qLabel.TextSize = 17
 qLabel.TextWrapped = true
+qLabel.TextTruncate = Enum.TextTruncate.AtEnd
 qLabel.Text = "Memuat teka-teki..."
 qLabel.Parent = frame
 UiThemeT.Label(qLabel)
@@ -58,10 +66,13 @@ local choiceBtns = {}
 for i = 1, 4 do
 	local b = Instance.new("TextButton")
 	b.Size = UDim2.new(1, 0, 0, 44)
-	b.TextScaled = true
+	b.Font = Enum.Font.GothamBold
+	b.TextSize = 17
+	b.TextTruncate = Enum.TextTruncate.AtEnd
 	b.Text = "..."
 	b.Parent = frame
 	UiThemeT.Button(b)
+	UiThemeT.Hover(b)
 	b.MouseButton1Click:Connect(function()
 		local ok, res = SubmitAnswer:InvokeServer(currentId, i)
 		if ok then
@@ -80,7 +91,8 @@ end
 
 local hintLabel = Instance.new("TextLabel")
 hintLabel.Size = UDim2.new(1, 0, 0, 60)
-hintLabel.TextScaled = true
+hintLabel.Font = Enum.Font.GothamBold
+hintLabel.TextSize = 15
 hintLabel.TextWrapped = true
 hintLabel.Text = ""
 hintLabel.Parent = frame
@@ -88,10 +100,13 @@ UiThemeT.Label(hintLabel)
 
 local hintBtn = Instance.new("TextButton")
 hintBtn.Size = UDim2.new(1, 0, 0, 40)
-hintBtn.TextScaled = true
+hintBtn.Font = Enum.Font.GothamBold
+hintBtn.TextSize = 17
+hintBtn.TextTruncate = Enum.TextTruncate.AtEnd
 hintBtn.Text = "💡 Minta Hint (gratis/cooldown)"
 hintBtn.Parent = frame
 UiThemeT.Button(hintBtn)
+UiThemeT.Hover(hintBtn)
 hintBtn.MouseButton1Click:Connect(function()
 	if not currentId then
 		return
@@ -103,17 +118,22 @@ UiIconsT.Attach(hintBtn, "ui-key")
 
 local compassLabel = Instance.new("TextLabel")
 compassLabel.Size = UDim2.new(1, 0, 0, 36)
-compassLabel.TextScaled = true
+compassLabel.Font = Enum.Font.GothamBold
+compassLabel.TextSize = 15
+compassLabel.TextTruncate = Enum.TextTruncate.AtEnd
 compassLabel.Text = "Kompas: -"
 compassLabel.Parent = frame
 UiThemeT.Label(compassLabel)
 
 local compassBtn = Instance.new("TextButton")
 compassBtn.Size = UDim2.new(1, 0, 0, 40)
-compassBtn.TextScaled = true
+compassBtn.Font = Enum.Font.GothamBold
+compassBtn.TextSize = 17
+compassBtn.TextTruncate = Enum.TextTruncate.AtEnd
 compassBtn.Text = "🧭 Cek Kompas"
 compassBtn.Parent = frame
 UiThemeT.Button(compassBtn)
+UiThemeT.Hover(compassBtn)
 compassBtn.MouseButton1Click:Connect(function()
 	local ok, res = CompassPing:InvokeServer()
 	compassLabel.Text = ok and ("Kompas: " .. tostring(res)) or tostring(res)
@@ -122,10 +142,13 @@ UiIconsT.Attach(compassBtn, "ui-compass")
 
 local digBtn = Instance.new("TextButton")
 digBtn.Size = UDim2.new(1, 0, 0, 48)
-digBtn.TextScaled = true
+digBtn.Font = Enum.Font.GothamBold
+digBtn.TextSize = 18
+digBtn.TextTruncate = Enum.TextTruncate.AtEnd
 digBtn.Text = "⛏️ GALI DI SINI"
 digBtn.Parent = frame
 UiThemeT.Button(digBtn, UiThemeT.Accent)
+UiThemeT.Hover(digBtn)
 digBtn.TextColor3 = Color3.fromRGB(20, 20, 20)
 digBtn.MouseButton1Click:Connect(function()
 	local ok, res = RequestDig:InvokeServer()
@@ -139,10 +162,13 @@ end)
 
 local toolBtn = Instance.new("TextButton")
 toolBtn.Size = UDim2.new(1, 0, 0, 40)
-toolBtn.TextScaled = true
+toolBtn.Font = Enum.Font.GothamBold
+toolBtn.TextSize = 16
+toolBtn.TextTruncate = Enum.TextTruncate.AtEnd
 toolBtn.Text = "🛠️ Beli Sekop (5rb) / Kompas (3rb)"
 toolBtn.Parent = frame
 UiThemeT.Button(toolBtn)
+UiThemeT.Hover(toolBtn)
 toolBtn.MouseButton1Click:Connect(function()
 	local _ok1, r1 = BuyTool:InvokeServer("shovel")
 	local _ok2, r2 = BuyTool:InvokeServer("compass")

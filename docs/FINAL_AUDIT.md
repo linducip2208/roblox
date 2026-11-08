@@ -1,4 +1,9 @@
-# FINAL AUDIT — v0.4.0 (8 Nov 2026, Master Command)
+# FINAL AUDIT — v0.6.0 (8 Nov 2026, Master Command lanjutan: tanpa commit)
+- Selene 0/0, StyLua PASS, build PASS, verify 17/18, aset 34/34 valid.
+- Baru sesi ini: rate limit 15/15 remote, UiPanels+UiTheme konsisten, session lock
+  fail-closed + VerifyLock pre-commit, receipt idempoten terverifikasi, rambu 3D,
+  ShopUI stok real-time, TreasureUI anti-nil-ambigu.
+- TIDAK ADA commit/push sesi ini (sesuai perintah). Working tree = sumber kebenaran.
 
 ## Diperiksa
 - 28 modul Luau + project + 24 docs + 92 placeholder + 34 render ComfyUI (26+8, manifest cocok).

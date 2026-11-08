@@ -5,6 +5,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Items = require(Shared:WaitForChild("Items"))
 local UiIcons = require(Shared:WaitForChild("UiIcons"))
 local UiTheme = require(Shared:WaitForChild("UiTheme"))
+local UiPanels = require(Shared:WaitForChild("UiPanels"))
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestBuy = remotes:WaitForChild("RequestBuy") :: RemoteFunction
 local RequestLock = remotes:WaitForChild("RequestLock") :: RemoteEvent
@@ -23,20 +24,25 @@ frame.Position = UDim2.new(1, -360, 0, 20)
 frame.CanvasSize = UDim2.new(0, 0, 0, 0)
 frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 frame.Parent = gui
-UiTheme.Panel(frame)
+UiTheme.DecoratePanel(frame)
 
 -- Tombol lipat: Shop bisa disembunyikan biar layar lega
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.new(0, 44, 0, 44)
 toggleBtn.Position = UDim2.new(1, -56, 0, 20)
-toggleBtn.TextScaled = true
-toggleBtn.Text = "❌"
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.TextSize = 22
+toggleBtn.Text = "X"
 toggleBtn.Parent = gui
-UiTheme.Button(toggleBtn)
+UiTheme.Button(toggleBtn, UiTheme.Panel)
+UiTheme.Hover(toggleBtn)
 toggleBtn.MouseButton1Click:Connect(function()
-	frame.Visible = not frame.Visible
-	toggleBtn.Text = frame.Visible and "❌" or "🛒"
+	UiPanels.Toggle("shop")
 end)
+UiPanels.Register("shop", function(v)
+	frame.Visible = v
+	toggleBtn.Text = v and "X" or "+"
+end, true)
 
 local layout = Instance.new("UIListLayout")
 layout.Parent = frame
@@ -44,34 +50,43 @@ layout.Padding = UDim.new(0, 6)
 
 local header = Instance.new("TextLabel")
 header.Size = UDim2.new(1, 0, 0, 30)
-header.Text = "🌱 SHOP (restock 5 mnt)"
-header.TextScaled = true
+header.Text = "SHOP (restock 5 mnt)"
+header.Font = Enum.Font.GothamBold
+header.TextSize = 20
+header.TextTruncate = Enum.TextTruncate.AtEnd
 header.Parent = frame
 UiTheme.Title(header)
 
 local eventLabel = Instance.new("TextLabel")
-eventLabel.Size = UDim2.new(1, 0, 0, 30)
+eventLabel.Size = UDim2.new(1, 0, 0, 26)
 eventLabel.Text = "Event: -"
-eventLabel.TextScaled = true
+eventLabel.Font = Enum.Font.Gotham
+eventLabel.TextSize = 14
+eventLabel.TextTruncate = Enum.TextTruncate.AtEnd
 eventLabel.Parent = frame
 UiTheme.Label(eventLabel)
 
 -- tombol Lock + Rebirth
 local lockBtn = Instance.new("TextButton")
-lockBtn.Size = UDim2.new(1, 0, 0, 40)
-lockBtn.Text = "🔒 Kunci Base (60s)"
-lockBtn.TextScaled = true
+lockBtn.Size = UDim2.new(1, 0, 0, 44)
+lockBtn.Text = "Kunci Base (60s)"
+lockBtn.Font = Enum.Font.GothamBold
+lockBtn.TextSize = 18
+lockBtn.TextTruncate = Enum.TextTruncate.AtEnd
 lockBtn.Parent = frame
 lockBtn.MouseButton1Click:Connect(function()
 	RequestLock:FireServer()
 end)
-UiTheme.Button(lockBtn, Color3.fromRGB(50, 90, 160))
+UiTheme.Button(lockBtn, UiTheme.Primary)
+UiTheme.Hover(lockBtn)
 UiIcons.Attach(lockBtn, "ui-lock")
 
 local rbBtn = Instance.new("TextButton")
-rbBtn.Size = UDim2.new(1, 0, 0, 40)
-rbBtn.Text = "♻️ Rebirth (1jt)"
-rbBtn.TextScaled = true
+rbBtn.Size = UDim2.new(1, 0, 0, 44)
+rbBtn.Text = "Rebirth (1jt)"
+rbBtn.Font = Enum.Font.GothamBold
+rbBtn.TextSize = 18
+rbBtn.TextTruncate = Enum.TextTruncate.AtEnd
 rbBtn.Parent = frame
 rbBtn.MouseButton1Click:Connect(function()
 	local ok, res = RequestRebirth:InvokeServer()
@@ -82,26 +97,32 @@ rbBtn.MouseButton1Click:Connect(function()
 	end
 end)
 UiTheme.Button(rbBtn, UiTheme.Accent)
+UiTheme.Hover(rbBtn)
 rbBtn.TextColor3 = Color3.fromRGB(20, 20, 20)
 UiIcons.Attach(rbBtn, "ui-trophy")
 
 local dailyBtn = Instance.new("TextButton")
-dailyBtn.Size = UDim2.new(1, 0, 0, 40)
-dailyBtn.Text = "🎁 Daily Reward"
-dailyBtn.TextScaled = true
+dailyBtn.Size = UDim2.new(1, 0, 0, 44)
+dailyBtn.Text = "Daily Reward"
+dailyBtn.Font = Enum.Font.GothamBold
+dailyBtn.TextSize = 18
+dailyBtn.TextTruncate = Enum.TextTruncate.AtEnd
 dailyBtn.Parent = frame
 dailyBtn.MouseButton1Click:Connect(function()
 	local req = remotes:WaitForChild("RequestDaily") :: RemoteFunction
 	local ok, amt = req:InvokeServer()
 	dailyBtn.Text = ok and ("+Rp" .. tostring(amt)) or "Sudah claim hari ini"
 end)
-UiTheme.Button(dailyBtn, Color3.fromRGB(46, 110, 70))
+UiTheme.Button(dailyBtn, UiTheme.Secondary)
+UiTheme.Hover(dailyBtn)
 UiIcons.Attach(dailyBtn, "ui-gift")
 
 local redeemBox = Instance.new("TextBox")
-redeemBox.Size = UDim2.new(1, 0, 0, 40)
+redeemBox.Size = UDim2.new(1, 0, 0, 44)
 redeemBox.PlaceholderText = "Kode redeem..."
-redeemBox.TextScaled = true
+redeemBox.Font = Enum.Font.Gotham
+redeemBox.TextSize = 16
+redeemBox.TextTruncate = Enum.TextTruncate.AtEnd
 redeemBox.BackgroundColor3 = Color3.fromRGB(20, 20, 32)
 redeemBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 redeemBox.PlaceholderColor3 = Color3.fromRGB(140, 140, 160)
@@ -120,9 +141,12 @@ end)
 local RequestStock = remotes:WaitForChild("RequestStock") :: RemoteFunction
 local stockLabel = Instance.new("TextLabel")
 stockLabel.Size = UDim2.new(1, 0, 0, 26)
-stockLabel.TextScaled = true
+stockLabel.Font = Enum.Font.Gotham
+stockLabel.TextSize = 14
+stockLabel.TextTruncate = Enum.TextTruncate.AtEnd
 stockLabel.Text = "Stok: ..."
 stockLabel.Parent = frame
+UiTheme.Label(stockLabel)
 
 -- daftar item (Secret disembunyikan: hanya via steal)
 local RarityCode =
@@ -136,11 +160,15 @@ for _, def in Items.List do
 		continue
 	end
 	local b = Instance.new("TextButton")
-	b.Size = UDim2.new(1, 0, 0, 50)
-	b.TextScaled = true
+	b.Size = UDim2.new(1, 0, 0, 56)
+	b.Font = Enum.Font.GothamBold
+	b.TextSize = 15
+	b.TextWrapped = true
+	b.TextTruncate = Enum.TextTruncate.AtEnd
 	b.Text = baseText(def)
 	b.Parent = frame
 	UiTheme.Button(b, UiTheme.Rarity[def.Rarity])
+	UiTheme.Hover(b)
 	itemBtns[def.Id] = { btn = b, def = def }
 	b.MouseButton1Click:Connect(function()
 		local ok, res = RequestBuy:InvokeServer(def.Id)
