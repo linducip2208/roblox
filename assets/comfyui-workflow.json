@@ -1,0 +1,13 @@
+{
+  "comment": "ComfyUI workflow minimal txt2img 1024 + upscale. Import via Load di ComfyUI.",
+  "nodes": {
+    "1": { "class": "CheckpointLoaderSimple", "input": { "ckpt_name": "dreamshaper_8.safetensors" } },
+    "2": { "class": "CLIPTextEncode", "input": { "text": "POSITIVE_PROMPT_HERE, cute chibi fruit character, studio lighting, white background, centered, no text, no watermark", "clip": ["1", 1] } },
+    "3": { "class": "CLIPTextEncode", "input": { "text": "blurry, dark, horror, extra limbs, cropped, watermark, text, logo, lowres, deformed", "clip": ["1", 1] } },
+    "4": { "class": "EmptyLatentImage", "input": { "width": 1024, "height": 1024, "batch_size": 4 } },
+    "5": { "class": "KSampler", "input": { "seed": 42, "steps": 30, "cfg": 6.5, "sampler_name": "euler_ancestral", "scheduler": "normal", "denoise": 1.0, "model": ["1", 0], "positive": ["2", 0], "negative": ["3", 0], "latent_image": ["4", 0] } },
+    "6": { "class": "VAEDecode", "input": { "samples": ["5", 0], "vae": ["1", 2] } },
+    "7": { "class": "UpscaleImageUsingModel", "input": { "upscale_model": "RealESRGAN_x4.pth", "image": ["6", 0] } },
+    "8": { "class": "SaveImage", "input": { "filename_prefix": "kebun/item", "images": ["7", 0] } }
+  }
+}
