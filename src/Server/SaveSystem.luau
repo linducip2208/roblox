@@ -79,7 +79,23 @@ local function ValidateProfile(d: any)
 	d.dailyStreak = math.floor(num(d.dailyStreak, 0, 0, 7))
 	d.lastDailyYday = if type(d.lastDailyYday) == "string" then d.lastDailyYday else ""
 	d.redeemed = if type(d.redeemed) == "table" then d.redeemed else {}
+	-- receipts: PurchaseId -> timestamp. Prune >30 hari agar tidak tumbuh tanpa batas
+	-- (retry Roblox terjadi dalam hitungan hari, bukan bulan).
 	d.receipts = if type(d.receipts) == "table" then d.receipts else {}
+	do
+		local count = 0
+		for _ in d.receipts do
+			count += 1
+		end
+		if count > 200 then
+			local cutoff = now() - 30 * 86400
+			for pid, at in d.receipts do
+				if type(at) ~= "number" or at < cutoff then
+					d.receipts[pid] = nil
+				end
+			end
+		end
+	end
 	d.luckUntil = num(d.luckUntil, 0, 0, now() + 86400 * 30)
 	d.treasure = if type(d.treasure) == "table" then d.treasure else {}
 	local t = d.treasure
@@ -177,6 +193,33 @@ function SaveSystem.ReleaseSession(player: Player)
 			return old -- milik orang lain: jangan sentuh
 		end)
 	end)
+end
+
+-- Verifikasi ulang lock SEBELUM commit (jangan andalkan status lama).
+-- Fail-closed: lock hilang/diambil alih/tidak bisa dicek = JANGAN simpan.
+function SaveSystem.VerifyLock(player: Player): (boolean, string?)
+	local mine = sessionToken[player.UserId]
+	if mine == nil or sessionMap == nil then
+		return false, "no_session"
+	end
+	local ok, cur = pcall(function()
+		return sessionMap:GetAsync(SESSION_KEY_PREFIX .. player.UserId)
+	end)
+	if not ok then
+		return false, "lock_unavailable"
+	end
+	if type(cur) == "table" and cur.token == mine and (cur.exp or 0) > now() then
+		return true, nil
+	end
+	return false, "lock_lost"
+end
+
+function SaveSystem.DropCache(player: Player)
+	local uid = player.UserId
+	cache[uid] = nil
+	loadedOk[uid] = nil
+	sessionToken[uid] = nil
+	savedOnLeave[uid] = nil
 end
 
 -- Heartbeat: perpanjang lock milik sendiri tiap 60 dtk. Mismatch = sesi diambil alih -> kick.
@@ -284,18 +327,23 @@ local function snapshot(profile)
 	return copy
 end
 
-function SaveSystem.Save(player: Player)
+function SaveSystem.Save(player: Player): boolean
 	local d = cache[player.UserId]
 	if not d then
-		return
+		return false
 	end
 	if not loadedOk[player.UserId] then
 		warn("[Save] skip save (belum loaded): " .. player.Name)
-		return
+		return false
 	end
 	if sessionToken[player.UserId] == nil then
 		warn("[Save] skip save (tanpa session lock): " .. player.Name)
-		return
+		return false
+	end
+	local lockOk, lockErr = SaveSystem.VerifyLock(player)
+	if not lockOk then
+		warn(("[Save] skip save (lock %s): %s"):format(tostring(lockErr), player.Name))
+		return false
 	end
 	d.lastLogout = now()
 	local bal = MoneyService.Get(player)
@@ -322,15 +370,16 @@ function SaveSystem.Save(player: Player)
 		if ok and type(res) == "table" and res.session == mySession then
 			d._baseAt = res.at
 			d._baseSession = mySession
-			return
+			return true
 		end
 		if ok then
 			warn("[Save] konflik versi, skip save: " .. player.Name)
-			return
+			return false
 		end
 		backoff(attempt)
 	end
 	warn("[Save] save gagal 3x: " .. player.Name)
+	return false
 end
 
 -- autosave stagger: jeda antar pemain agar tidak spike
@@ -355,15 +404,24 @@ Players.PlayerRemoving:Connect(function(p)
 end)
 
 game:BindToClose(function()
-	for _, p in Players:GetPlayers() do
-		if not savedOnLeave[p.UserId] then
-			savedOnLeave[p.UserId] = true
-			SaveSystem.Save(p)
-			SaveSystem.ReleaseSession(p)
-			task.wait(0.5)
-		end
+	-- paralel agar 8 pemain selesai sebelum batas shutdown
+	local done = 0
+	local list = Players:GetPlayers()
+	for _, p in list do
+		task.spawn(function()
+			if not savedOnLeave[p.UserId] then
+				savedOnLeave[p.UserId] = true
+				SaveSystem.Save(p)
+				SaveSystem.ReleaseSession(p)
+			end
+			done += 1
+		end)
 	end
-	task.wait(8)
+	local waited = 0
+	while done < #list and waited < 25 do
+		task.wait(0.5)
+		waited += 0.5
+	end
 end)
 
 return SaveSystem

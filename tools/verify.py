@@ -27,8 +27,8 @@ needed: set[str] = set()
 for name, t in luas.items():
     if name.startswith("Client/"):
         needed |= set(re.findall(r'WaitForChild\("(\w+)"', t))
-needed -= {"Shared", "Remotes", "Plots", "PlayerGui", "Items", "AssetMap", "Config",
-           "ShopRotation", "TreasureConfig"}  # modul/folder, bukan remote
+needed -= {"Shared", "Remotes", "Plots", "PlayerGui", "Items", "AssetMap", "UiIcons",
+           "Config", "ShopRotation", "TreasureConfig"}  # modul/folder, bukan remote
 missing = needed - made
 check("remote-parity", not missing, f"hilang: {sorted(missing)}" if missing else f"{len(needed)} remote OK")
 

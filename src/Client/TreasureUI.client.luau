@@ -1,6 +1,8 @@
 -- TreasureUI.client.luau — panel teka-teki + kompas + gali (mobile friendly)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SharedT = ReplicatedStorage:WaitForChild("Shared")
+local UiIconsT = require(SharedT:WaitForChild("UiIcons"))
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestRiddle = remotes:WaitForChild("RequestRiddle") :: RemoteFunction
 local SubmitAnswer = remotes:WaitForChild("SubmitAnswer") :: RemoteFunction
@@ -76,6 +78,7 @@ hintBtn.MouseButton1Click:Connect(function()
 	local ok, res = RequestHint:InvokeServer(currentId)
 	hintLabel.Text = ok and ("Hint: " .. tostring(res)) or tostring(res)
 end)
+UiIconsT.Attach(hintBtn, "ui-key")
 
 local compassLabel = Instance.new("TextLabel")
 compassLabel.Size = UDim2.new(1, 0, 0, 36)
@@ -92,6 +95,7 @@ compassBtn.MouseButton1Click:Connect(function()
 	local ok, res = CompassPing:InvokeServer()
 	compassLabel.Text = ok and ("Kompas: " .. tostring(res)) or tostring(res)
 end)
+UiIconsT.Attach(compassBtn, "ui-compass")
 
 local digBtn = Instance.new("TextButton")
 digBtn.Size = UDim2.new(1, 0, 0, 48)
@@ -118,6 +122,8 @@ toolBtn.MouseButton1Click:Connect(function()
 	local _ok2, r2 = BuyTool:InvokeServer("compass")
 	toolBtn.Text = tostring(r1) .. " | " .. tostring(r2)
 end)
+UiIconsT.Attach(toolBtn, "ui-shovel")
+UiIconsT.Attach(digBtn, "ui-chest")
 
 function refresh()
 	local r = RequestRiddle:InvokeServer()

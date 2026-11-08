@@ -37,6 +37,8 @@ end
 
 -- dipanggil dari Main saat ProcessReceipt DevProduct (hanya server).
 -- Idempoten via PurchaseId: satu receipt tidak pernah dobel grant.
+-- Urutan: cek duplikat -> grant ke memori -> tandai receipt -> save.
+-- Save gagal = NotProcessedYet agar Roblox retry; retry baca receipt yg sama.
 function GamepassHandler.OnProductBought(player: Player, productId: number, purchaseId: string?): boolean
 	if productId ~= Config.Products.LuckBoost15m and productId ~= Config.Products.UnlockInstant then
 		return false -- unknown product: tanpa hadiah
@@ -47,8 +49,8 @@ function GamepassHandler.OnProductBought(player: Player, productId: number, purc
 		return false -- pemain belum loaded: NotProcessedYet agar dicoba lagi
 	end
 	profile.receipts = profile.receipts or {}
-	if purchaseId and profile.receipts[purchaseId] then
-		return true -- sudah diberi sebelumnya
+	if purchaseId and profile.receipts[purchaseId] ~= nil then
+		return true -- sudah diberi sebelumnya (termasuk retry setelah restart)
 	end
 	if productId == Config.Products.LuckBoost15m then
 		GamepassHandler.GrantLuck(player, 15)
@@ -57,10 +59,10 @@ function GamepassHandler.OnProductBought(player: Player, productId: number, purc
 		StealSystem.Unlock(player)
 	end
 	if purchaseId then
-		profile.receipts[purchaseId] = true
+		profile.receipts[purchaseId] = os.time()
 	end
-	SaveSystem.Save(player)
-	return true
+	-- Granted HANYA jika persistensi benar-benar commit.
+	return SaveSystem.Save(player)
 end
 
 game.Players.PlayerRemoving:Connect(function(p)

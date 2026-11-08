@@ -654,19 +654,27 @@ end
 
 Players.PlayerAdded:Connect(function(p)
 	Analytics.Join()
-	local profile = SaveSystem.Load(p)
-	if not profile then
-		task.wait(5)
-		profile = SaveSystem.Load(p)
-	end
-	if not profile then
-		-- DataStore down: tendang agar data cloud tidak tertimpa default
-		p:Kick("Data gagal dimuat. Coba join lagi dalam 1 menit.")
-		return
-	end
+	-- 1) CLAIM DULU: tanpa session ownership, tidak ada load & tidak ada gameplay.
 	local sessOk, sessMsg = SaveSystem.ClaimSession(p)
 	if not sessOk then
 		p:Kick(tostring(sessMsg or "Sesi ganda."))
+		return
+	end
+	-- 2) Baru load. Gagal = release lock + kick (jangan biarkan lock menggantung).
+	local profile = SaveSystem.Load(p)
+	if not profile and p.Parent ~= nil then
+		task.wait(5)
+		if p.Parent ~= nil then
+			profile = SaveSystem.Load(p)
+		end
+	end
+	if not profile then
+		SaveSystem.ReleaseSession(p)
+		SaveSystem.DropCache(p)
+		if p.Parent ~= nil then
+			-- DataStore down: tendang agar data cloud tidak tertimpa default
+			p:Kick("Data gagal dimuat. Coba join lagi dalam 1 menit.")
+		end
 		return
 	end
 	InventoryService.Ensure(profile)
