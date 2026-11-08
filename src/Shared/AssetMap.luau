@@ -104,7 +104,9 @@ local AssetMap = {
 
 function AssetMap.Get(itemId: string): string?
 	local v = AssetMap[itemId]
-	if v and v ~= "" then return v end
+	if v and v ~= "" then
+		return v
+	end
 	return nil
 end
 

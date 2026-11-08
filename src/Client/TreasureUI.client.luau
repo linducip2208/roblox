@@ -66,7 +66,9 @@ hintBtn.TextScaled = true
 hintBtn.Text = "💡 Minta Hint (gratis/cooldown)"
 hintBtn.Parent = frame
 hintBtn.MouseButton1Click:Connect(function()
-	if not currentId then return end
+	if not currentId then
+		return
+	end
 	local ok, res = RequestHint:InvokeServer(currentId)
 	hintLabel.Text = ok and ("Hint: " .. tostring(res)) or tostring(res)
 end)
@@ -108,8 +110,8 @@ toolBtn.TextScaled = true
 toolBtn.Text = "🛠️ Beli Sekop (5rb) / Kompas (3rb)"
 toolBtn.Parent = frame
 toolBtn.MouseButton1Click:Connect(function()
-	local ok1, r1 = BuyTool:InvokeServer("shovel")
-	local ok2, r2 = BuyTool:InvokeServer("compass")
+	local _ok1, r1 = BuyTool:InvokeServer("shovel")
+	local _ok2, r2 = BuyTool:InvokeServer("compass")
 	toolBtn.Text = tostring(r1) .. " | " .. tostring(r2)
 end)
 
@@ -123,7 +125,9 @@ function refresh()
 	currentId = r.Id
 	qLabel.Text = ("[%s] %s"):format(r.Id, r.Q)
 	for i, c in ipairs(r.Choices) do
-		if choiceBtns[i] then choiceBtns[i].Text = ("%d. %s"):format(i, c) end
+		if choiceBtns[i] then
+			choiceBtns[i].Text = ("%d. %s"):format(i, c)
+		end
 	end
 end
 

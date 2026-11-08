@@ -13,17 +13,23 @@ local lastAttempt: { [number]: number } = {}
 local lastDig: { [number]: number } = {}
 local lastPing: { [number]: number } = {}
 
-local function now(): number return os.clock() end
+local function now(): number
+	return os.clock()
+end
 
 local function ensureUser(uid: number)
-	if not spots[uid] then spots[uid] = {} end
+	if not spots[uid] then
+		spots[uid] = {}
+	end
 	return spots[uid]
 end
 
 -- Hidupkan kembali spot dari save (posisi sama, tidak random ulang).
 function TreasureService.RestoreSpots(uid: number, saved: any?)
 	local u = ensureUser(uid)
-	if type(saved) ~= "table" then return end
+	if type(saved) ~= "table" then
+		return
+	end
 	for riddleId, p in saved do
 		if type(p) == "table" and type(p.x) == "number" then
 			u[riddleId] = { pos = Vector3.new(p.x, p.y, p.z), spawnedAt = os.time() }
@@ -37,14 +43,20 @@ local function persistSpot(profile, riddleId: string, pos: Vector3)
 end
 
 local function clearSpot(profile, uid: number, riddleId: string)
-	if spots[uid] then spots[uid][riddleId] = nil end
-	if profile.treasure.spots then profile.treasure.spots[riddleId] = nil end
+	if spots[uid] then
+		spots[uid][riddleId] = nil
+	end
+	if profile.treasure.spots then
+		profile.treasure.spots[riddleId] = nil
+	end
 end
 
 function TreasureService.GetNextUnsolved(profile)
 	local t = profile.treasure
 	for _, r in TConfig.Riddles do
-		if not t.solved[r.Id] then return r end
+		if not t.solved[r.Id] then
+			return r
+		end
 	end
 	return nil
 end
@@ -52,7 +64,9 @@ end
 -- Riddle untuk client: TANPA jawaban. Client tidak boleh tahu index benar.
 function TreasureService.PublicRiddle(profile)
 	local r = TreasureService.GetNextUnsolved(profile)
-	if not r then return nil end
+	if not r then
+		return nil
+	end
 	return { Id = r.Id, Q = r.Q, Choices = r.Choices,
 		HintsUsed = profile.treasure.hintsUsed[r.Id] or 0,
 		Solved = false, Zone = nil }
@@ -68,16 +82,27 @@ function TreasureService.SubmitAnswer(uid: number, profile, riddleId: string, ch
 	end
 	lastAttempt[uid] = now()
 	local correct = Answers[riddleId]
-	if not correct then return false, "riddle_invalid" end
-	if t.solved[riddleId] then return false, "sudah_selesai" end
+	if not correct then
+		return false, "riddle_invalid"
+	end
+	if t.solved[riddleId] then
+		return false, "sudah_selesai"
+	end
 	local nextR = TreasureService.GetNextUnsolved(profile)
-	if not nextR or nextR.Id ~= riddleId then return false, "bukan_urutan" end
+	if not nextR or nextR.Id ~= riddleId then
+		return false, "bukan_urutan"
+	end
 	-- cari def untuk reward/zone (tanpa jawaban)
 	local def = nil
 	for _, r in TConfig.Riddles do
-		if r.Id == riddleId then def = r break end
+		if r.Id == riddleId then
+			def = r
+			break
+		end
 	end
-	if not def then return false, "riddle_invalid" end
+	if not def then
+		return false, "riddle_invalid"
+	end
 	if choiceIdx == correct then
 		t.solved[riddleId] = true
 		t.fails[riddleId] = 0
@@ -103,12 +128,21 @@ function TreasureService.RequestHint(profile, riddleId: string, playerCash: numb
 	local t = profile.treasure
 	local def = nil
 	for _, r in TConfig.Riddles do
-		if r.Id == riddleId then def = r break end
+		if r.Id == riddleId then
+			def = r
+			break
+		end
 	end
-	if not def then return false, "riddle_invalid", 0 end
-	if t.solved[riddleId] then return false, "sudah_selesai", 0 end
+	if not def then
+		return false, "riddle_invalid", 0
+	end
+	if t.solved[riddleId] then
+		return false, "sudah_selesai", 0
+	end
 	local used = t.hintsUsed[riddleId] or 0
-	if used >= TConfig.Hint.MaxHintsPerRiddle then return false, "hint_habis", 0 end
+	if used >= TConfig.Hint.MaxHintsPerRiddle then
+		return false, "hint_habis", 0
+	end
 	if EventManager.HintFree() then -- Treasure Rush: hint gratis
 		t.hintsUsed[riddleId] = used + 1
 		t.lastHintAt = os.time()
@@ -132,12 +166,16 @@ end
 -- Kembalikan spot aktif yg belum digali (terdekat dari pemain).
 local function nearestSpot(uid: number, profile, hrpPos: Vector3): (string?, any?)
 	local u = spots[uid]
-	if not u then return nil, nil end
+	if not u then
+		return nil, nil
+	end
 	local bestId, best, bestD = nil, nil, math.huge
 	for riddleId, s in u do
 		if not profile.treasure.found[riddleId] then
 			local d = (hrpPos - s.pos).Magnitude
-			if d < bestD then bestId, best, bestD = riddleId, s, d end
+			if d < bestD then
+				bestId, best, bestD = riddleId, s, d
+			end
 		end
 	end
 	return bestId, best
@@ -145,12 +183,18 @@ end
 
 -- Kompas: hanya jarak kasar + arah mata angin, TIDAK pernah koordinat.
 function TreasureService.CompassPing(uid: number, player: Player, profile): (boolean, string)
-	if not profile.treasure.hasCompass then return false, "butuh_kompas" end
-	if now() - (lastPing[uid] or -99) < 2 then return false, "ping_cooldown" end
+	if not profile.treasure.hasCompass then
+		return false, "butuh_kompas"
+	end
+	if now() - (lastPing[uid] or -99) < 2 then
+		return false, "ping_cooldown"
+	end
 	lastPing[uid] = now()
 	local char = player.Character
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
-	if not hrp then return false, "nochar" end
+	if not hrp then
+		return false, "nochar"
+	end
 	local riddleId, s = nearestSpot(uid, profile, hrp.Position)
 	if not s then
 		if TreasureService.GetNextUnsolved(profile) then
@@ -181,10 +225,14 @@ function TreasureService.TryDig(uid: number, player: Player, profile): (boolean,
 	lastDig[uid] = now()
 	local char = player.Character
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
-	if not hrp then return false, "nochar" end
+	if not hrp then
+		return false, "nochar"
+	end
 	-- cocokkan dengan spot aktif mana pun dalam radius (anti gali sembarang)
 	local u = spots[uid]
-	if not u then return false, "belum_ada_harta" end
+	if not u then
+		return false, "belum_ada_harta"
+	end
 	local hitId: string? = nil
 	for riddleId, s in u do
 		if not t.found[riddleId] and (hrp.Position - s.pos).Magnitude <= TConfig.Dig.Radius then
@@ -192,15 +240,22 @@ function TreasureService.TryDig(uid: number, player: Player, profile): (boolean,
 			break
 		end
 	end
-	if not hitId then return false, "belum_tepat_ikuti_kompas" end
-	if t.keys < 1 then return false, "butuh_kunci_selesaikan_teka_teki" end
+	if not hitId then
+		return false, "belum_tepat_ikuti_kompas"
+	end
+	if t.keys < 1 then
+		return false, "butuh_kunci_selesaikan_teka_teki"
+	end
 	t.keys -= 1
 	t.found[hitId] = true
 	t.level += 1
 	clearSpot(profile, uid, hitId)
 	local def = nil
 	for _, r in TConfig.Riddles do
-		if r.Id == hitId then def = r break end
+		if r.Id == hitId then
+			def = r
+			break
+		end
 	end
 	local bonus = def and def.RewardCash or 5000
 	return true, { riddleId = hitId, bonus = bonus, level = t.level }

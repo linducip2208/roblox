@@ -2,6 +2,9 @@
 game.rbxlx
 tools/rojo/
 tools/rojo.zip
+tools/selene/
+tools/selene.zip
+tools/selene-out.txt
 *.tmp
 
 __pycache__/

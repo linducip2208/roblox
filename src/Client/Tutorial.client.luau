@@ -20,10 +20,14 @@ label.Text = "1. Buka SHOP kanan -> beli Cabai 2. Tunggu tumbuh 3. Kunci base ðŸ
 label.Parent = gui
 
 UpdateHud.OnClientEvent:Connect(function(d)
-	if done then return end
+	if done then
+		return
+	end
 	if d.type == "tick" and d.cash and d.cash > 500 then
 		done = true
 		label.Text = "Mantap! Coba curi dari plot teman (tahan E) atau Rebirth di 1jt."
-		task.delay(10, function() gui:Destroy() end)
+		task.delay(10, function() 
+			gui:Destroy()
+		end)
 	end
 end)

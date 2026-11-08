@@ -29,7 +29,9 @@ local function getEventRemote()
 end
 
 function EventManager.IsActive(): boolean
-	if not EventManager.Active then return false end
+	if not EventManager.Active then
+		return false
+	end
 	if os.time() > EventManager.EndsAt then
 		EventManager.Active = false
 		return false
@@ -59,12 +61,16 @@ function EventManager.Start(minutes: number?, eventKey: string?)
 end
 
 function EventManager.Multiplier(): number
-	if not EventManager.IsActive() then return 1 end
+	if not EventManager.IsActive() then
+		return 1
+	end
 	return activeDef().IncomeMultiplier or 1
 end
 
 function EventManager.HintFree(): boolean
-	if not EventManager.IsActive() then return false end
+	if not EventManager.IsActive() then
+		return false
+	end
 	return activeDef().HintDiscount == true
 end
 

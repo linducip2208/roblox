@@ -1,5 +1,4 @@
 -- Leaderboard.luau — leaderstats Cash + Rebirths
-local Players = game:GetService("Players")
 
 local Leaderboard = {}
 

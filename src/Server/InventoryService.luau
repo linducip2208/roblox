@@ -20,21 +20,27 @@ end
 
 function InventoryService.GiveShovel(profile): boolean
 	local t = InventoryService.Ensure(profile)
-	if t.hasShovel then return false end
+	if t.hasShovel then
+		return false
+	end
 	t.hasShovel = true
 	return true
 end
 
 function InventoryService.GiveCompass(profile): boolean
 	local t = InventoryService.Ensure(profile)
-	if t.hasCompass then return false end
+	if t.hasCompass then
+		return false
+	end
 	t.hasCompass = true
 	return true
 end
 
 function InventoryService.SpendKeys(profile, n: number): boolean
 	local t = InventoryService.Ensure(profile)
-	if t.keys < n then return false end
+	if t.keys < n then
+		return false
+	end
 	t.keys -= n
 	return true
 end

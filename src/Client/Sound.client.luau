@@ -13,13 +13,17 @@ local function muted(): boolean
 end
 
 local function beep(id: string, vol: number)
-	if muted() then return end
+	if muted() then
+		return
+	end
 	local s = Instance.new("Sound")
 	s.SoundId = id
 	s.Volume = vol or 0.5
 	s.Parent = workspace
 	s:Play()
-	s.Ended:Connect(function() s:Destroy() end)
+	s.Ended:Connect(function() 
+		s:Destroy()
+	end)
 end
 
 UpdateHud.OnClientEvent:Connect(function(d)
@@ -32,9 +36,13 @@ UpdateHud.OnClientEvent:Connect(function(d)
 	end
 end)
 -- event start: dengarkan EventState
-local ok, ev = pcall(function() return remotes:WaitForChild("EventState") end)
+local ok, ev = pcall(function() 
+	return remotes:WaitForChild("EventState")
+end)
 if ok then
 	ev.OnClientEvent:Connect(function(d)
-		if d.active then beep("rbxasset://sounds/Rocket shot.wav", 0.5) end
+		if d.active then
+			beep("rbxasset://sounds/Rocket shot.wav", 0.5)
+		end
 	end)
 end

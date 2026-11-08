@@ -14,7 +14,9 @@ local rarityColor = {
 function PlotVisuals.Refresh(plotBase: BasePart, slots: any, Items: any, PlotManager: any)
 	-- hapus visual lama
 	for _, c in plotBase:GetChildren() do
-		if c.Name == "Crop" then c:Destroy() end
+		if c.Name == "Crop" then
+			c:Destroy()
+		end
 	end
 	local AssetMap = nil
 	pcall(function()

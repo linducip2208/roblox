@@ -7,7 +7,6 @@ local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestBuy = remotes:WaitForChild("RequestBuy") :: RemoteFunction
 local RequestLock = remotes:WaitForChild("RequestLock") :: RemoteEvent
 local RequestRebirth = remotes:WaitForChild("RequestRebirth") :: RemoteFunction
-local UpdateHud = remotes:WaitForChild("UpdateHud")
 local EventState = remotes:WaitForChild("EventState")
 
 local player = Players.LocalPlayer
@@ -80,7 +79,9 @@ redeemBox.PlaceholderText = "Kode redeem..."
 redeemBox.TextScaled = true
 redeemBox.Parent = frame
 redeemBox.FocusLost:Connect(function(enter)
-	if not enter then return end
+	if not enter then
+		return
+	end
 	local req = remotes:WaitForChild("RequestRedeem") :: RemoteFunction
 	local ok, res = req:InvokeServer(redeemBox.Text)
 	redeemBox.Text = ok and ("+Rp" .. tostring(res)) or ("Gagal: " .. tostring(res))
@@ -124,8 +125,12 @@ for _, def in Items.List do
 end
 
 function refreshStock()
-	local ok, data = pcall(function() return RequestStock:InvokeServer() end)
-	if not ok or type(data) ~= "table" then return end
+	local ok, data = pcall(function() 
+		return RequestStock:InvokeServer()
+	end)
+	if not ok or type(data) ~= "table" then
+		return
+	end
 	local stock = data.stock or {}
 	for id, rec in itemBtns do
 		local b, def = rec.btn, rec.def

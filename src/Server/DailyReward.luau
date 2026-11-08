@@ -16,9 +16,13 @@ function DailyReward.CanClaim(profile): boolean
 end
 
 function DailyReward.Claim(profile): (boolean, number)
-	if not DailyReward.CanClaim(profile) then return false, 0 end
+	if not DailyReward.CanClaim(profile) then
+		return false, 0
+	end
 	local streak = (profile.dailyStreak or 0) + 1
-	if streak > 7 then streak = 1 end
+	if streak > 7 then
+		streak = 1
+	end
 	-- reset jika hari terakhir bukan kemarin (skip sehari)
 	if profile.lastDailyYday ~= "" and profile.lastDailyYday ~= prevDayKey() then
 		streak = 1

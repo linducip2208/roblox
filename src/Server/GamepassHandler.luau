@@ -22,14 +22,14 @@ function GamepassHandler.HasLuck(player: Player): boolean
 end
 
 function GamepassHandler.GrantLuck(player: Player, minutes: number)
-	local until = os.time() + minutes * 60
-	luckUntil[player.UserId] = until
+	local expiresAt = os.time() + minutes * 60
+	luckUntil[player.UserId] = expiresAt
 	local ok, SaveSystem = pcall(require, script.Parent:WaitForChild("SaveSystem"))
 	if ok and SaveSystem then
 		local SaveSys = SaveSystem
 		local p = SaveSys.Get(player)
 		if p then
-			p.luckUntil = until
+			p.luckUntil = expiresAt
 			SaveSys.Save(player)
 		end
 	end
@@ -57,7 +57,9 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passI
 		local SaveSystem = require(script.Parent:WaitForChild("SaveSystem"))
 		local MoneyService = require(script.Parent:WaitForChild("MoneyService"))
 		local p = SaveSystem.Get(player)
-		if p then MoneyService.RefreshMultiplier(player, p) end
+		if p then
+			MoneyService.RefreshMultiplier(player, p)
+		end
 	end
 end)
 

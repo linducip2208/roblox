@@ -36,7 +36,9 @@ local function defaultProfile()
 end
 
 local function Migrate(data)
-	if type(data.version) ~= "number" then data.version = 1 end
+	if type(data.version) ~= "number" then
+		data.version = 1
+	end
 	-- v1 -> v2: tambah treasure, daily, redeemed, luck
 	data.cash = data.cash or Config.StartingCash
 	data.rebirths = data.rebirths or 0
@@ -109,7 +111,9 @@ function SaveSystem.ClaimSession(player: Player): (boolean, string?)
 end
 
 function SaveSystem.ReleaseSession(player: Player)
-	if sessionMap == nil then return end
+	if sessionMap == nil then
+		return
+	end
 	pcall(function()
 		sessionMap:RemoveAsync("s_" .. player.UserId)
 	end)
@@ -128,7 +132,9 @@ function SaveSystem.Load(player: Player)
 			break
 		end
 		warn(("[Save] load gagal percobaan %d %s: %s"):format(attempt, player.Name, tostring(res)))
-		if attempt < 3 then task.wait(2) end
+		if attempt < 3 then
+			task.wait(2)
+		end
 	end
 	if data ~= nil and type(data) ~= "table" then
 		warn("[Save] data korup, pakai default: " .. player.Name)
@@ -182,7 +188,9 @@ end
 
 function SaveSystem.Save(player: Player)
 	local d = cache[player.UserId]
-	if not d then return end
+	if not d then
+		return
+	end
 	if not loadedOk[player.UserId] then
 		warn("[Save] skip save (belum loaded): " .. player.Name)
 		return
@@ -198,9 +206,13 @@ function SaveSystem.Save(player: Player)
 		local ok, err = pcall(function()
 			store:SetAsync(key, snap)
 		end)
-		if ok then return end
+		if ok then
+			return
+		end
 		warn(("[Save] save gagal percobaan %d %s: %s"):format(attempt, player.Name, tostring(err)))
-		if attempt < 3 then task.wait(2) end
+		if attempt < 3 then
+			task.wait(2)
+		end
 	end
 end
 

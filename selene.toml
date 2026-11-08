@@ -1,0 +1,7 @@
+std = "roblox"
+exclude = ["tools/*"]
+[config]
+display_style = "compact"
+[lints]
+# UI sengaja pakai offset piksel (bukan scale) agar konsisten di mobile kecil.
+roblox_manual_fromscale_or_fromoffset = "allow"

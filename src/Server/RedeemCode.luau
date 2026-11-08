@@ -9,9 +9,13 @@ local CODES = {
 function RedeemCode.Redeem(profile, code: string): (boolean, number | string)
 	code = code:upper():gsub("%s+", "")
 	local amount = CODES[code]
-	if not amount then return false, "kode_salah" end
+	if not amount then
+		return false, "kode_salah"
+	end
 	profile.redeemed = profile.redeemed or {}
-	if profile.redeemed[code] then return false, "sudah_dipakai" end
+	if profile.redeemed[code] then
+		return false, "sudah_dipakai"
+	end
 	profile.redeemed[code] = true
 	return true, amount
 end

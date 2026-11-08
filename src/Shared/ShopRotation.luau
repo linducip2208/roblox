@@ -9,7 +9,9 @@ ShopRotation.LastRestock = os.time()
 function ShopRotation.TimeLeft(): number
 	local elapsed = os.time() - ShopRotation.LastRestock
 	local left = ShopRotation.RestockInterval - elapsed
-	if left < 0 then left = 0 end
+	if left < 0 then
+		left = 0
+	end
 	return left
 end
 
@@ -50,7 +52,9 @@ end
 
 function ShopRotation.Take(itemId: string): boolean
 	local q = ShopRotation.Stock[itemId] or 0
-	if q <= 0 then return false end
+	if q <= 0 then
+		return false
+	end
 	ShopRotation.Stock[itemId] = q - 1
 	return true
 end

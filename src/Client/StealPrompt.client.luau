@@ -7,8 +7,12 @@ local RequestSteal = remotes:WaitForChild("RequestSteal") :: RemoteFunction
 local localPlayer = Players.LocalPlayer
 
 local function hookPlot(plot: BasePart)
-	if plot.Name:match("^Plot_") == nil then return end
-	if plot:FindFirstChild("StealPrompt") then return end
+	if plot.Name:match("^Plot_") == nil then
+		return
+	end
+	if plot:FindFirstChild("StealPrompt") then
+		return
+	end
 	local pp = Instance.new("ProximityPrompt")
 	pp.Name = "StealPrompt"
 	pp.ActionText = "Curi"
@@ -33,9 +37,13 @@ end
 
 local plotsFolder = workspace:WaitForChild("Plots")
 for _, p in plotsFolder:GetChildren() do
-	if p:IsA("BasePart") then hookPlot(p) end
+	if p:IsA("BasePart") then
+		hookPlot(p)
+	end
 end
 plotsFolder.ChildAdded:Connect(function(c)
 	task.wait(1)
-	if c:IsA("BasePart") then hookPlot(c) end
+	if c:IsA("BasePart") then
+		hookPlot(c)
+	end
 end)

@@ -37,7 +37,9 @@ info.Parent = frame
 -- ID produk diambil dari server (0 = tampil "segera hadir", aman, tidak hardcode).
 local ids = { gpDouble = 0, gpVip = 0, pLuck = 0, pUnlock = 0 }
 local function refresh()
-	local ok, d = pcall(function() return RequestInventory:InvokeServer() end)
+	local ok, d = pcall(function() 
+		return RequestInventory:InvokeServer()
+	end)
 	if ok and type(d) == "table" then
 		ids.gpDouble, ids.gpVip, ids.pLuck, ids.pUnlock =
 			d.gpDouble or 0, d.gpVip or 0, d.pLuck or 0, d.pUnlock or 0
