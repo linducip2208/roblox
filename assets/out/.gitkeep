@@ -1,0 +1,3 @@
+-- taruh hasil ComfyUI di sini dengan nama persis dari ASSET-LIST.md
+-- contoh: icon-512.png, thumb-1.png, cabai_noob.png
+-- lalu upload ke Roblox Create -> Images, isi ID ke src/Shared/AssetMap.luau
