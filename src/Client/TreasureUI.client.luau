@@ -20,12 +20,27 @@ gui.Name = "TreasureGui"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 360, 0, 480)
-frame.Position = UDim2.new(0, 16, 0.5, -240)
-frame.BackgroundTransparency = 0.15
+local frame = Instance.new("ScrollingFrame")
+frame.Size = UDim2.new(0, 340, 0, 430)
+frame.Position = UDim2.new(0, 16, 0.5, -230)
+frame.CanvasSize = UDim2.new(0, 0, 0, 0)
+frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 frame.Parent = gui
+frame.Visible = false -- default terlipat agar layar lega; buka via tombol peta
 UiThemeT.Panel(frame)
+
+-- Tombol lipat panel harta karun
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 44, 0, 44)
+toggleBtn.Position = UDim2.new(0, 16, 0, 110)
+toggleBtn.TextScaled = true
+toggleBtn.Text = "🗺️"
+toggleBtn.Parent = gui
+UiThemeT.Button(toggleBtn)
+toggleBtn.MouseButton1Click:Connect(function()
+	frame.Visible = not frame.Visible
+	toggleBtn.Text = frame.Visible and "❌" or "🗺️"
+end)
 
 local layout = Instance.new("UIListLayout")
 layout.Parent = frame
@@ -110,7 +125,8 @@ digBtn.Size = UDim2.new(1, 0, 0, 48)
 digBtn.TextScaled = true
 digBtn.Text = "⛏️ GALI DI SINI"
 digBtn.Parent = frame
-UiThemeT.Button(digBtn)
+UiThemeT.Button(digBtn, UiThemeT.Accent)
+digBtn.TextColor3 = Color3.fromRGB(20, 20, 20)
 digBtn.MouseButton1Click:Connect(function()
 	local ok, res = RequestDig:InvokeServer()
 	if ok then

@@ -11,11 +11,24 @@ gui.Name = "InventoryGui"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 300, 0, 420)
-frame.Position = UDim2.new(1, -320, 0.5, -210)
-frame.BackgroundTransparency = 0.15
+local frame = Instance.new("ScrollingFrame")
+frame.Size = UDim2.new(0, 300, 0, 380)
+frame.Position = UDim2.new(1, -320, 0.5, -190)
+frame.CanvasSize = UDim2.new(0, 0, 0, 0)
+frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 frame.Parent = gui
+
+-- Tombol lipat profil
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 44, 0, 44)
+toggleBtn.Position = UDim2.new(1, -56, 0.5, -22)
+toggleBtn.TextScaled = true
+toggleBtn.Text = "❌"
+toggleBtn.Parent = gui
+toggleBtn.MouseButton1Click:Connect(function()
+	frame.Visible = not frame.Visible
+	toggleBtn.Text = frame.Visible and "❌" or "🎒"
+end)
 
 local layout = Instance.new("UIListLayout")
 layout.Parent = frame
@@ -32,6 +45,7 @@ local AssetMap = require(Shared:WaitForChild("AssetMap"))
 local UiTheme = require(Shared:WaitForChild("UiTheme"))
 UiTheme.Panel(frame)
 UiTheme.Title(title)
+UiTheme.Button(toggleBtn)
 
 -- Baris stat: [ikon 28px | teks]. Ikon hanya muncul bila Asset ID sudah diisi
 -- (sebelum upload = teks saja, tidak ada kotak rusak).

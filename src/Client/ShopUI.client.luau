@@ -25,6 +25,19 @@ frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 frame.Parent = gui
 UiTheme.Panel(frame)
 
+-- Tombol lipat: Shop bisa disembunyikan biar layar lega
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 44, 0, 44)
+toggleBtn.Position = UDim2.new(1, -56, 0, 20)
+toggleBtn.TextScaled = true
+toggleBtn.Text = "❌"
+toggleBtn.Parent = gui
+UiTheme.Button(toggleBtn)
+toggleBtn.MouseButton1Click:Connect(function()
+	frame.Visible = not frame.Visible
+	toggleBtn.Text = frame.Visible and "❌" or "🛒"
+end)
+
 local layout = Instance.new("UIListLayout")
 layout.Parent = frame
 layout.Padding = UDim.new(0, 6)
@@ -52,7 +65,7 @@ lockBtn.Parent = frame
 lockBtn.MouseButton1Click:Connect(function()
 	RequestLock:FireServer()
 end)
-UiTheme.Button(lockBtn)
+UiTheme.Button(lockBtn, Color3.fromRGB(50, 90, 160))
 UiIcons.Attach(lockBtn, "ui-lock")
 
 local rbBtn = Instance.new("TextButton")
@@ -68,7 +81,8 @@ rbBtn.MouseButton1Click:Connect(function()
 		rbBtn.Text = "Gagal: " .. tostring(res)
 	end
 end)
-UiTheme.Button(rbBtn)
+UiTheme.Button(rbBtn, UiTheme.Accent)
+rbBtn.TextColor3 = Color3.fromRGB(20, 20, 20)
 UiIcons.Attach(rbBtn, "ui-trophy")
 
 local dailyBtn = Instance.new("TextButton")
@@ -81,7 +95,7 @@ dailyBtn.MouseButton1Click:Connect(function()
 	local ok, amt = req:InvokeServer()
 	dailyBtn.Text = ok and ("+Rp" .. tostring(amt)) or "Sudah claim hari ini"
 end)
-UiTheme.Button(dailyBtn)
+UiTheme.Button(dailyBtn, Color3.fromRGB(46, 110, 70))
 UiIcons.Attach(dailyBtn, "ui-gift")
 
 local redeemBox = Instance.new("TextBox")
@@ -92,6 +106,8 @@ redeemBox.BackgroundColor3 = Color3.fromRGB(20, 20, 32)
 redeemBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 redeemBox.PlaceholderColor3 = Color3.fromRGB(140, 140, 160)
 redeemBox.Parent = frame
+UiTheme.Corner(redeemBox, 8)
+UiTheme.Stroke(redeemBox, UiTheme.Accent)
 redeemBox.FocusLost:Connect(function(enter)
 	if not enter then
 		return
@@ -124,7 +140,7 @@ for _, def in Items.List do
 	b.TextScaled = true
 	b.Text = baseText(def)
 	b.Parent = frame
-	UiTheme.Button(b)
+	UiTheme.Button(b, UiTheme.Rarity[def.Rarity])
 	itemBtns[def.Id] = { btn = b, def = def }
 	b.MouseButton1Click:Connect(function()
 		local ok, res = RequestBuy:InvokeServer(def.Id)
