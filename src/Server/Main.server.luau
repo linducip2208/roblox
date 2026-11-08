@@ -68,6 +68,8 @@ local RATE_LIMITS: { [string]: number } = {
 	RequestLock = 1,
 	SubmitAnswer = 3,
 	RequestRiddle = 1,
+	RequestStock = 2, -- read-only tapi tetap dibatasi agar tidak di-spam
+	RequestInventory = 2,
 }
 local function checkRate(player: Player, name: string): boolean
 	local need = RATE_LIMITS[name]
@@ -447,6 +449,9 @@ local RequestStock = getOrCreate("RequestStock", "RemoteFunction")
 local RequestInventory = getOrCreate("RequestInventory", "RemoteFunction")
 
 function RequestInventory.OnServerInvoke(player: Player)
+	if not checkRate(player, "RequestInventory") then
+		return nil
+	end
 	local profile = SaveSystem.Get(player)
 	if not profile then
 		return nil
@@ -481,6 +486,9 @@ function RequestInventory.OnServerInvoke(player: Player)
 end
 
 function RequestStock.OnServerInvoke(_player: Player)
+	if not checkRate(_player, "RequestStock") then
+		return { stock = {}, secs = 0 }
+	end
 	return { stock = ShopRotation.Stock, secs = ShopRotation.TimeLeft() }
 end
 

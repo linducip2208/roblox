@@ -32,6 +32,17 @@ needed -= {"Shared", "Remotes", "Plots", "PlayerGui", "Items", "AssetMap", "UiIc
 missing = needed - made
 check("remote-parity", not missing, f"hilang: {sorted(missing)}" if missing else f"{len(needed)} remote OK")
 
+# 2b. Semua RemoteFunction client->server punya rate limit
+main_src = luas.get("Server/Main.server.luau", "")
+made_funcs = set()
+for m in re.finditer(r'getOrCreate\("(\w+)"\s*,\s*"Remote(Function|Event)"', main_src):
+    if m.group(2) == "Function":
+        made_funcs.add(m.group(1))
+mblock = re.search(r"RATE_LIMITS[^=]*=\s*\{(.*?)\}", main_src, re.S)
+limits = set(re.findall(r"^\s*(\w+)\s*=", mblock.group(1), re.M)) if mblock else set()
+no_limit = sorted(made_funcs - limits)
+check("rate-limit-coverage", not no_limit, f"tanpa limit: {no_limit}" if no_limit else f"{len(limits)} remote dilindungi")
+
 # 3. Skema Items
 items = luas.get("Shared/Items.luau", "")
 ids = re.findall(r'Id\s*=\s*"([^"]+)"', items)
@@ -108,22 +119,34 @@ print(f"\nRINGKASAN: {len(passes)} PASS, {len(fails)} FAIL")
 if fails:
     print("FAIL:", ", ".join(fails))
 
-# Gerbang Selene (lewati jika biner tidak ada di mesin ini)
+# Gerbang Selene + StyLua (lewati jika biner tidak ada di mesin ini)
 import subprocess
-try:
-    exe = BASE / "tools" / "selene" / "selene.exe"
+
+
+def run_tool(name: str, args: list[str]) -> str | None:
+    exe = BASE / "tools" / name / (name + ".exe")
     if not exe.exists():
-        exe = "selene"  # coba PATH
-    r = subprocess.run(
-        [str(exe), str(SRC)],
-        capture_output=True, text=True, cwd=str(BASE), timeout=120)
-    out = (r.stdout or "") + (r.stderr or "")
+        exe = pathlib.Path(name)  # coba PATH
+    try:
+        r = subprocess.run([str(exe)] + args, capture_output=True, text=True,
+                           cwd=str(BASE), timeout=120)
+        return (r.stdout or "") + (r.stderr or "")
+    except Exception as e:
+        print(f"[SKIP] {name} tidak tersedia: {e}")
+        return None
+
+
+out = run_tool("selene", [str(SRC)])
+if out is not None:
     n_err = out.count("error[")
     n_warn = out.count("warning[")
     check("selene-clean", n_err == 0 and n_warn == 0,
           f"{n_err} error, {n_warn} warning" if (n_err or n_warn) else "0 error 0 warning")
-except Exception as e:
-    print(f"[SKIP] selene tidak tersedia: {e}")
+
+out = run_tool("stylua", ["--check", str(SRC)])
+if out is not None:
+    clean = "Diff in" not in out
+    check("stylua-clean", clean, "format rapi" if clean else "ada diff format")
 
 print(f"FINAL: {len(passes)} PASS, {len(fails)} FAIL")
 if fails:
