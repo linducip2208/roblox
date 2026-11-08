@@ -35,6 +35,10 @@ function Analytics.Rebirth()
 	bump("rebirth", 1)
 end
 
+function Analytics.Riddle()
+	bump("riddle_solved", 1)
+end
+
 function Analytics.Event()
 	bump("event", 1)
 end

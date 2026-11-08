@@ -1,9 +1,10 @@
 # KNOWN ISSUES
 
-1. Session ownership ganda (2 server tulis DataStore bersamaan, mis. pindah server cepat)
-   belum di-lock (butuh MemoryStore). Mitigasi: retry + loadedOk. Risiko: item duplikat
-   lintas server. Prioritas: sebelum public beta.
-2. `Analytics.Buy(0)` dipakai untuk progres riddle — counter kasar, perbaiki saat butuh dasbor.
+1. ~~Session ownership ganda belum di-lock~~ SELESAI sebagian (v0.2.2): MemoryStore
+   session lock fail-open (`SaveSystem.ClaimSession/ReleaseSession`, kick jika sesi aktif
+   <10 mnt). Sisa: uji 2 server (NOT TESTED).
+2. ~~`Analytics.Buy(0)` untuk progres riddle~~ SELESAI (v0.2.2): counter sendiri
+   `Analytics.Riddle()` (`riddle_solved`).
 3. ~~Shop client tidak tahu stok real-time~~ SELESAI (v0.2.1): `RequestStock` +
    label stok + countdown restock 10 dtk di ShopUI.
 4. SafeZone cek `FindFirstChild(SafeZoneName, true)` — jika nama diganti di MapBuilder,

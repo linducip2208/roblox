@@ -67,16 +67,6 @@ function PlotManager.TickIncome(profile): number
 end
 
 -- steal helpers
-function PlotManager.RemoveSlotByUid(profile, uid: string)
-	for k, slot in profile.slots do
-		if slot.uid == uid then
-			profile.slots[k] = nil
-			return slot
-		end
-	end
-	return nil
-end
-
 function PlotManager.AddStolenSlot(profile, slotData): (boolean, string?)
 	local free = PlotManager.FindFreeSlot(profile)
 	if not free then

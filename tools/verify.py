@@ -106,4 +106,22 @@ else:
 print(f"\nRINGKASAN: {len(passes)} PASS, {len(fails)} FAIL")
 if fails:
     print("FAIL:", ", ".join(fails))
+
+# Gerbang Selene (lewati jika biner tidak ada di mesin ini)
+import subprocess
+try:
+    r = subprocess.run(
+        [str(BASE / "tools" / "selene" / "selene.exe"), str(SRC)],
+        capture_output=True, text=True, cwd=str(BASE), timeout=120)
+    out = (r.stdout or "") + (r.stderr or "")
+    n_err = out.count("error[")
+    n_warn = out.count("warning[")
+    check("selene-clean", n_err == 0 and n_warn == 0,
+          f"{n_err} error, {n_warn} warning" if (n_err or n_warn) else "0 error 0 warning")
+except Exception as e:
+    print(f"[SKIP] selene tidak tersedia: {e}")
+
+print(f"FINAL: {len(passes)} PASS, {len(fails)} FAIL")
+if fails:
+    print("FAIL:", ", ".join(fails))
 sys.exit(1 if fails else 0)

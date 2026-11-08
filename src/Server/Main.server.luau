@@ -446,7 +446,7 @@ function SubmitAnswer.OnServerInvoke(player: Player, riddleId: string, choiceIdx
 		profile.treasure.keys += res.RewardKey
 		profile.cash = MoneyService.Get(player)
 		SaveSystem.Save(player)
-		Analytics.Buy(0) -- catat progres (reuse counter aman)
+		Analytics.Riddle()
 		return true, res
 	end
 	SaveSystem.Save(player)
