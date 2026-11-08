@@ -58,6 +58,10 @@ function EventManager.Start(minutes: number?, eventKey: string?)
 		mult = def.IncomeMultiplier,
 	})
 	print(("[Event] %s mulai %d mnt"):format(def.Name, minutes))
+	local okA, Analytics = pcall(require, script.Parent.Analytics)
+	if okA and Analytics then
+		Analytics.Event()
+	end
 	task.delay(minutes * 60, function()
 		if myGen ~= gen then
 			return

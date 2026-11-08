@@ -10,7 +10,6 @@ function InventoryService.Ensure(profile)
 	t.hasShovel = t.hasShovel or false
 	t.hasCompass = t.hasCompass or false
 	t.level = t.level or 1
-	t.activeRiddle = t.activeRiddle -- id yg sedang dikerjakan
 	t.hintsUsed = t.hintsUsed or {} -- [riddleId] = count
 	t.lastHintAt = t.lastHintAt or 0
 	t.fails = t.fails or {} -- [riddleId] = count

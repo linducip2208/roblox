@@ -65,6 +65,7 @@ local RATE_LIMITS: { [string]: number } = {
 	RequestRedeem = 3,
 	RequestHint = 2,
 	CompassPing = 2,
+	RequestLock = 1,
 	SubmitAnswer = 3,
 	RequestRiddle = 1,
 }
@@ -182,6 +183,9 @@ end
 
 -- LOCK base manual (tombol kunci)
 RequestLock.OnServerEvent:Connect(function(player: Player)
+	if not checkRate(player, "RequestLock") then
+		return
+	end
 	local profile = SaveSystem.Get(player)
 	if profile then
 		StealSystem.LockBase(player, profile.rebirths or 0, isVip(player))

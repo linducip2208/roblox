@@ -250,10 +250,10 @@ function TreasureService.TryDig(uid: number, player: Player, profile): (boolean,
 	if not hitId then
 		return false, "belum_tepat_ikuti_kompas"
 	end
-	if t.keys < 1 then
+	local InventoryService = require(script.Parent.InventoryService)
+	if not InventoryService.SpendKeys(profile, 1) then
 		return false, "butuh_kunci_selesaikan_teka_teki"
 	end
-	t.keys -= 1
 	t.found[hitId] = true
 	t.level += 1
 	clearSpot(profile, uid, hitId)
