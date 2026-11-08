@@ -100,6 +100,15 @@ local AssetMap = {
 	["thumb-1"] = "",
 	["thumb-2"] = "",
 	["thumb-3"] = "",
+	-- ikon UI ComfyUI (assets/generated/ui/*.png) — dipakai InventoryUI bila ID terisi
+	["ui-shovel"] = "",
+	["ui-compass"] = "",
+	["ui-chest"] = "",
+	["ui-coin"] = "",
+	["ui-key"] = "",
+	["ui-lock"] = "",
+	["ui-gift"] = "",
+	["ui-trophy"] = "",
 }
 
 function AssetMap.Get(itemId: string): string?

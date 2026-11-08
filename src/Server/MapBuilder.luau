@@ -3,6 +3,14 @@
 local MapBuilder = {}
 
 function MapBuilder.Build()
+	-- Lighting ceria konsisten (aman dijalanin tiap start; tidak menimpa pilihan Studio manual? menimpa — by design agar seragam)
+	local light = game:GetService("Lighting")
+	light.ClockTime = 14
+	light.Brightness = 2
+	light.Ambient = Color3.fromRGB(120, 120, 130)
+	light.OutdoorAmbient = Color3.fromRGB(150, 160, 180)
+	light.FogEnd = 900
+
 	if workspace:FindFirstChild("Plots") == nil then
 		local f = Instance.new("Folder")
 		f.Name = "Plots"

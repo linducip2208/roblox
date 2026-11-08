@@ -3,6 +3,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Items = require(Shared:WaitForChild("Items"))
+local UiIcons = require(Shared:WaitForChild("UiIcons"))
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestBuy = remotes:WaitForChild("RequestBuy") :: RemoteFunction
 local RequestLock = remotes:WaitForChild("RequestLock") :: RemoteEvent
@@ -47,6 +48,7 @@ lockBtn.Parent = frame
 lockBtn.MouseButton1Click:Connect(function()
 	RequestLock:FireServer()
 end)
+UiIcons.Attach(lockBtn, "ui-lock")
 
 local rbBtn = Instance.new("TextButton")
 rbBtn.Size = UDim2.new(1, 0, 0, 40)
@@ -61,6 +63,7 @@ rbBtn.MouseButton1Click:Connect(function()
 		rbBtn.Text = "Gagal: " .. tostring(res)
 	end
 end)
+UiIcons.Attach(rbBtn, "ui-trophy")
 
 local dailyBtn = Instance.new("TextButton")
 dailyBtn.Size = UDim2.new(1, 0, 0, 40)
@@ -72,6 +75,7 @@ dailyBtn.MouseButton1Click:Connect(function()
 	local ok, amt = req:InvokeServer()
 	dailyBtn.Text = ok and ("+Rp" .. tostring(amt)) or "Sudah claim hari ini"
 end)
+UiIcons.Attach(dailyBtn, "ui-gift")
 
 local redeemBox = Instance.new("TextBox")
 redeemBox.Size = UDim2.new(1, 0, 0, 40)

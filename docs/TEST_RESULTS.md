@@ -2,7 +2,7 @@
 
 ## PASS (terverifikasi mesin, 8 Nov 2026)
 - `rojo build` → game.rbxlx (PASS).
-- Selene 0.32.0 (`selene.toml`, std roblox): **0 error, 0 warning** di `src/` (PASS).
+- Selene 0.32.0: 0 error, 0 warning di src (PASS, dijalankan ulang setiap perubahan).
   Menemukan 2 bug kritis yang lolos review manusia dan langsung diperbaiki:
   (1) `local until` = kata kunci Luau → GamepassHandler gagal compile (fitur Luck mati);
   (2) koma hilang di 10 riddle TreasureConfig (akibat script migrasi jawaban) → modul

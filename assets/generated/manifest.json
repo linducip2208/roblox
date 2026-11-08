@@ -8,7 +8,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox (icon/thumbnail)"
+  "usage": "upload Roblox (icon/thumbnail)",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "thumbnails/thumb-1",
@@ -19,7 +22,10 @@
    768
   ],
   "status": "done",
-  "usage": "upload Roblox (icon/thumbnail)"
+  "usage": "upload Roblox (icon/thumbnail)",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "thumbnails/thumb-2",
@@ -30,7 +36,10 @@
    768
   ],
   "status": "done",
-  "usage": "upload Roblox (icon/thumbnail)"
+  "usage": "upload Roblox (icon/thumbnail)",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "thumbnails/thumb-3",
@@ -41,7 +50,10 @@
    768
   ],
   "status": "done",
-  "usage": "upload Roblox (icon/thumbnail)"
+  "usage": "upload Roblox (icon/thumbnail)",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/cabai_noob",
@@ -52,7 +64,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/wortel_goyang",
@@ -63,7 +78,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/tomat_gendut",
@@ -74,7 +92,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/jagung_rave",
@@ -85,7 +106,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/terong_disco",
@@ -96,7 +120,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/semangka_mewing",
@@ -107,7 +134,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/pisang_sultan",
@@ -118,7 +148,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/durian_megar",
@@ -129,7 +162,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/anggur_roblox",
@@ -140,7 +176,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/mangga_ohio",
@@ -151,7 +190,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/apel_brainrot",
@@ -162,7 +204,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/nanas_jet",
@@ -173,7 +218,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/kelapa_godzilla",
@@ -184,7 +232,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/melon_skibidi",
@@ -195,7 +246,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/stroberi_tung",
@@ -206,7 +260,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/leci_tralala",
@@ -217,7 +274,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/kiwi_bombardilo",
@@ -228,7 +288,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/sirsak_titan",
@@ -239,7 +302,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/sawit_garut",
@@ -250,7 +316,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/kopi_gacor",
@@ -261,7 +330,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/kopi_hujan",
@@ -272,7 +344,10 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  },
  {
   "name": "plants/payung_raksasa",
@@ -283,6 +358,121 @@
    1024
   ],
   "status": "done",
-  "usage": "upload Roblox Images/Decal"
+  "usage": "upload Roblox Images/Decal",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
+ },
+ {
+  "name": "ui/ui-shovel",
+  "file": "D:\\project laravel\\roblox\\assets\\generated\\ui\\ui-shovel.png",
+  "seed": null,
+  "size": [
+   512,
+   512
+  ],
+  "status": "done",
+  "usage": "UI icon (Inventory/Shop/Treasure)",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
+ },
+ {
+  "name": "ui/ui-coin",
+  "file": "D:\\project laravel\\roblox\\assets\\generated\\ui\\ui-coin.png",
+  "seed": null,
+  "size": [
+   512,
+   512
+  ],
+  "status": "done",
+  "usage": "UI icon (Inventory/Shop/Treasure)",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
+ },
+ {
+  "name": "ui/ui-key",
+  "file": "D:\\project laravel\\roblox\\assets\\generated\\ui\\ui-key.png",
+  "seed": null,
+  "size": [
+   512,
+   512
+  ],
+  "status": "done",
+  "usage": "UI icon (Inventory/Shop/Treasure)",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
+ },
+ {
+  "name": "ui/ui-lock",
+  "file": "D:\\project laravel\\roblox\\assets\\generated\\ui\\ui-lock.png",
+  "seed": null,
+  "size": [
+   512,
+   512
+  ],
+  "status": "done",
+  "usage": "UI icon (Inventory/Shop/Treasure)",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
+ },
+ {
+  "name": "ui/ui-gift",
+  "file": "D:\\project laravel\\roblox\\assets\\generated\\ui\\ui-gift.png",
+  "seed": null,
+  "size": [
+   512,
+   512
+  ],
+  "status": "done",
+  "usage": "UI icon (Inventory/Shop/Treasure)",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
+ },
+ {
+  "name": "ui/ui-trophy",
+  "file": "D:\\project laravel\\roblox\\assets\\generated\\ui\\ui-trophy.png",
+  "seed": null,
+  "size": [
+   512,
+   512
+  ],
+  "status": "done",
+  "usage": "UI icon (Inventory/Shop/Treasure)",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
+ },
+ {
+  "name": "ui/ui-compass",
+  "file": "D:\\project laravel\\roblox\\assets\\generated\\ui\\ui-compass.png",
+  "seed": null,
+  "size": [
+   512,
+   512
+  ],
+  "status": "done",
+  "usage": "UI icon (Inventory/Shop/Treasure)",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
+ },
+ {
+  "name": "ui/ui-chest",
+  "file": "D:\\project laravel\\roblox\\assets\\generated\\ui\\ui-chest.png",
+  "seed": null,
+  "size": [
+   512,
+   512
+  ],
+  "status": "done",
+  "usage": "UI icon (Inventory/Shop/Treasure)",
+  "validated": true,
+  "roblox_status": "UPLOAD_PENDING",
+  "roblox_asset_id": ""
  }
 ]
