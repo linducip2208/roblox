@@ -53,3 +53,16 @@ karena peluang kecil dan BEP dasar sudah >100 dtk.
 - Income tick tanpa sink (uang tidak pernah keluar kecuali beli/rebirth).
 - Penyeimbang: biaya naik eksponensial, rebirth reset cash, shop stok terbatas.
 - NEXT: tambah sink (upgrade plot berbayar, skin) jika median cash pemain >50jt di bulan 1.
+
+## 6. Hasil simulasi (tools/sim_economy.py, model teoritis — BUKAN data live)
+- Asumsi: EV mutasi 2.25x, reinvest agresif tiap 60 dtk, riddle selesai hari-2,
+  redeem 400rb hari-1, daily streak penuh, offline 8 jam/hari.
+- Hasil (batas atas pemain optimal): rebirth-1 hari-2, rebirth-2 hari-4,
+  rebirth-3 hari-6 — SAMA untuk 30 mnt / 1 jam / 3 jam main per hari.
+- Temuan jujur: bonus satu-kali (riddle 630rb + redeem 400rb + daily) mendominasi
+  rebirth-1; income offline 8 jam mendominasi rebirth-2/3. Waktu main aktif hampir
+  tidak berpengaruh dalam model ini.
+- Tindak lanjut: syarat rebirth dibuat skala linear (1jt/2jt/3jt...) sebagai guardrail.
+  JANGAN turunkan reward buta-buta sebelum data playtest — pemain nyata jauh dari
+  optimal (tidak reinvest tiap menit, slot tidak selalu penuh). Tuning lanjutan HANYA
+  berdasarkan median hari-ke-rebirth dari analytics produksi.

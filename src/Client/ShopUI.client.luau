@@ -56,7 +56,11 @@ rbBtn.TextScaled = true
 rbBtn.Parent = frame
 rbBtn.MouseButton1Click:Connect(function()
 	local ok, res = RequestRebirth:InvokeServer()
-	rbBtn.Text = ok and ("Rebirth x" .. tostring(res)) or ("Gagal: " .. tostring(res))
+	if ok and type(res) == "table" then
+		rbBtn.Text = ("Rebirth x%d (next %s)"):format(res.rebirths, tostring(res.nextNeed))
+	else
+		rbBtn.Text = "Gagal: " .. tostring(res)
+	end
 end)
 
 local dailyBtn = Instance.new("TextButton")

@@ -95,6 +95,11 @@ local AssetMap = {
 	["thumb_a"] = "",
 	["thumb_b"] = "",
 	["thumb_c"] = "",
+	-- alias file aktual (dipakai thumb komposit PIL; upload pilih salah satu set)
+	["icon-512"] = "",
+	["thumb-1"] = "",
+	["thumb-2"] = "",
+	["thumb-3"] = "",
 }
 
 function AssetMap.Get(itemId: string): string?

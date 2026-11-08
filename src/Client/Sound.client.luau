@@ -3,7 +3,17 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local UpdateHud = remotes:WaitForChild("UpdateHud")
 
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local function muted(): boolean
+	local pg = player:FindFirstChildOfClass("PlayerGui")
+	local inv = pg and pg:FindFirstChild("InventoryGui")
+	return inv ~= nil and inv:GetAttribute("Muted") == true
+end
+
 local function beep(id: string, vol: number)
+	if muted() then return end
 	local s = Instance.new("Sound")
 	s.SoundId = id
 	s.Volume = vol or 0.5

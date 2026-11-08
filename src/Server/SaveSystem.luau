@@ -1,6 +1,7 @@
 -- SaveSystem.luau -- load/save + offline growth + migrasi skema + retry
 -- Aturan data-loss: profil yang GAGAL load TIDAK PERNAH disimpan (loadedOk=false).
 local DataStoreService = game:GetService("DataStoreService")
+local MemoryStoreService = game:GetService("MemoryStoreService")
 local Players = game:GetService("Players")
 
 local Config = require(game.ReplicatedStorage.Shared.Config)
@@ -10,6 +11,10 @@ local MoneyService = require(script.Parent.MoneyService)
 local SCHEMA_VERSION = 2
 
 local store = DataStoreService:GetDataStore(Config.SaveKey)
+local sessionMap = nil
+pcall(function()
+	sessionMap = MemoryStoreService:GetSortedMap("KebunSessions_v1")
+end)
 local SaveSystem = {}
 local cache: { [number]: any } = {}
 local loadedOk: { [number]: boolean } = {}
@@ -77,6 +82,39 @@ function SaveSystem.IsLoaded(player: Player): boolean
 	return loadedOk[player.UserId] == true
 end
 
+-- Session lock fail-open: cegah 2 server tulis data pemain yang sama.
+-- Gagal total (MemoryStore down) = lanjutkan tanpa lock, JANGAN kick.
+-- Return: true = boleh lanjut, false + alasan = sesi ganda aktif.
+function SaveSystem.ClaimSession(player: Player): (boolean, string?)
+	if sessionMap == nil then
+		return true, nil
+	end
+	local key = "s_" .. player.UserId
+	local ok, cur = pcall(function()
+		return sessionMap:GetAsync(key)
+	end)
+	if not ok then
+		return true, nil -- fail open
+	end
+	if type(cur) == "table" and cur.server ~= nil and cur.server ~= game.JobId then
+		if (os.time() - (cur.at or 0)) < 600 then
+			return false, "akun dipakai di server lain, tunggu 10 menit"
+		end
+		-- lock kedaluwarsa: ambil alih
+	end
+	pcall(function()
+		sessionMap:SetAsync(key, { server = game.JobId, at = os.time() }, 660)
+	end)
+	return true, nil
+end
+
+function SaveSystem.ReleaseSession(player: Player)
+	if sessionMap == nil then return end
+	pcall(function()
+		sessionMap:RemoveAsync("s_" .. player.UserId)
+	end)
+end
+
 function SaveSystem.Load(player: Player)
 	local key = "p_" .. player.UserId
 	local data
@@ -118,7 +156,7 @@ function SaveSystem.Load(player: Player)
 	local cps = totalCps(data)
 	local mult = math.min(1 + data.rebirths * Config.RebirthMultiplierStep, Config.MaxRebirthMultiplier)
 	local earned = math.floor(elapsed * cps * mult)
-	local cap = math.floor(Config.RebirthRequirement * Config.OfflineMaxPctOfRebirth)
+	local cap = math.floor(Config.RebirthRequirementFor(data.rebirths or 0) * Config.OfflineMaxPctOfRebirth)
 	if earned > cap then
 		earned = cap
 	end
@@ -178,6 +216,7 @@ end)
 
 Players.PlayerRemoving:Connect(function(p)
 	SaveSystem.Save(p)
+	SaveSystem.ReleaseSession(p)
 	cache[p.UserId] = nil
 	loadedOk[p.UserId] = nil
 end)
@@ -185,6 +224,7 @@ end)
 game:BindToClose(function()
 	for _, p in Players:GetPlayers() do
 		SaveSystem.Save(p)
+		SaveSystem.ReleaseSession(p)
 	end
 	task.wait(8)
 end)

@@ -121,12 +121,13 @@ RequestLock.OnServerEvent:Connect(function(player: Player)
 	end
 end)
 
--- REBIRTH: reset items + cash, naik multiplier
+-- REBIRTH: reset items + cash, naik multiplier (syarat skala linear)
 function RequestRebirth.OnServerInvoke(player: Player)
 	local profile = SaveSystem.Get(player)
 	if not profile then return false, "noload" end
-	if MoneyService.Get(player) < Config.RebirthRequirement then
-		return false, "belum_cukup"
+	local need = Config.RebirthRequirementFor(profile.rebirths or 0)
+	if MoneyService.Get(player) < need then
+		return false, "belum_cukup_" .. tostring(need)
 	end
 	profile.slots = {}
 	profile.rebirths += 1
@@ -135,7 +136,7 @@ function RequestRebirth.OnServerInvoke(player: Player)
 	profile.cash = Config.StartingCash
 	MoneyService.RefreshMultiplier(player, profile)
 	StealSystem.LockBase(player, profile.rebirths, isVip(player))
-	return true, profile.rebirths
+	return true, { rebirths = profile.rebirths, nextNeed = Config.RebirthRequirementFor(profile.rebirths) }
 end
 
 -- STEAL: auto-pilih item termahal yang grown (client cukup kirim victimUserId)
@@ -327,6 +328,31 @@ local CompassPing = getOrCreate("CompassPing", "RemoteFunction")
 local RequestDig = getOrCreate("RequestDig", "RemoteFunction")
 local BuyTool = getOrCreate("BuyTool", "RemoteFunction")
 local RequestStock = getOrCreate("RequestStock", "RemoteFunction")
+local RequestInventory = getOrCreate("RequestInventory", "RemoteFunction")
+
+function RequestInventory.OnServerInvoke(player: Player)
+	local profile = SaveSystem.Get(player)
+	if not profile then return nil end
+	local t = profile.treasure or {}
+	local solved, found = 0, 0
+	for _, v in t.solved or {} do if v then solved += 1 end end
+	for _, v in t.found or {} do if v then found += 1 end end
+	return {
+		cash = MoneyService.Get(player),
+		rebirths = profile.rebirths or 0,
+		level = t.level or 1,
+		keys = t.keys or 0,
+		hasShovel = t.hasShovel == true,
+		hasCompass = t.hasCompass == true,
+		riddlesSolved = solved,
+		treasuresFound = found,
+		luck = GamepassHandler.HasLuck(player),
+		gpDouble = Config.Gamepasses.DoubleMoney,
+		gpVip = Config.Gamepasses.VIP,
+		pLuck = Config.Products.LuckBoost15m,
+		pUnlock = Config.Products.UnlockInstant,
+	}
+end
 
 function RequestStock.OnServerInvoke(player: Player)
 	return { stock = ShopRotation.Stock, secs = ShopRotation.TimeLeft() }
@@ -460,6 +486,11 @@ Players.PlayerAdded:Connect(function(p)
 	if not profile then
 		-- DataStore down: tendang agar data cloud tidak tertimpa default
 		p:Kick("Data gagal dimuat. Coba join lagi dalam 1 menit.")
+		return
+	end
+	local sessOk, sessMsg = SaveSystem.ClaimSession(p)
+	if not sessOk then
+		p:Kick(tostring(sessMsg or "Sesi ganda."))
 		return
 	end
 	InventoryService.Ensure(profile)

@@ -14,7 +14,7 @@ local Config = {
 	AutosaveInterval = 120,
 
 	StartingCash = 100,
-	RebirthRequirement = 1_000_000,
+	RebirthRequirement = 1_000_000, -- basis; syarat aktual = basis x (rebirths+1)
 	RebirthMultiplierStep = 1, -- +1x per rebirth (1 rebirth = x2)
 	MaxRebirthMultiplier = 10,
 
@@ -64,5 +64,10 @@ local Config = {
 		-- isi UserId kamu: [123456] = true,
 	},
 }
+
+-- Syarat rebirth skala linear: 1jt, 2jt, 3jt ... agar rebirth cepat tidak gratis.
+function Config.RebirthRequirementFor(rebirths: number): number
+	return Config.RebirthRequirement * (math.max(rebirths, 0) + 1)
+end
 
 return Config

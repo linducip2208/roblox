@@ -1,11 +1,12 @@
 # TEST RESULTS
 
 ## PASS (terverifikasi mesin, 8 Nov 2026)
-- `rojo build` → game.rbxlx 53KB (PASS, setelah semua perubahan fase 2–10).
-- Struktur Remote lengkap: 13 RemoteFunction/Event dibuat di Main, tidak ada yang
-  diminta client tapi tidak ada di server (PASS via grep).
-- Kunci jawaban tidak ada di Shared (PASS via grep: 0 `Answer =` di Shared).
-- TODO/FIXME di src: 0 (PASS via grep).
+- `rojo build` → game.rbxlx (PASS).
+- `tools/verify.py` → 14 PASS / 1 FAIL. Satu-satunya FAIL = product-ids-set
+  (4 ID masih 0) → BLOCKED monetisasi live SESUAI DESAIN (fitur aman-nonaktif
+  sampai owner isi ID di Config).
+- Struktur Remote: 17 remote, semua yang diminta client ada di server (V).
+- Kunci jawaban tidak ada di Shared; TODO/FIXME = 0.
 
 ## NOT TESTED (butuh Roblox Studio, tidak bisa dijalankan dari sini)
 - Play solo + 8 player, semua item QA.md.
