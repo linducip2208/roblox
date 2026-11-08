@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Items = require(Shared:WaitForChild("Items"))
 local UiIcons = require(Shared:WaitForChild("UiIcons"))
+local UiTheme = require(Shared:WaitForChild("UiTheme"))
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestBuy = remotes:WaitForChild("RequestBuy") :: RemoteFunction
 local RequestLock = remotes:WaitForChild("RequestLock") :: RemoteEvent
@@ -22,6 +23,7 @@ frame.Position = UDim2.new(1, -360, 0, 20)
 frame.CanvasSize = UDim2.new(0, 0, 0, 0)
 frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 frame.Parent = gui
+UiTheme.Panel(frame)
 
 local layout = Instance.new("UIListLayout")
 layout.Parent = frame
@@ -32,12 +34,14 @@ header.Size = UDim2.new(1, 0, 0, 30)
 header.Text = "🌱 SHOP (restock 5 mnt)"
 header.TextScaled = true
 header.Parent = frame
+UiTheme.Title(header)
 
 local eventLabel = Instance.new("TextLabel")
 eventLabel.Size = UDim2.new(1, 0, 0, 30)
 eventLabel.Text = "Event: -"
 eventLabel.TextScaled = true
 eventLabel.Parent = frame
+UiTheme.Label(eventLabel)
 
 -- tombol Lock + Rebirth
 local lockBtn = Instance.new("TextButton")
@@ -48,6 +52,7 @@ lockBtn.Parent = frame
 lockBtn.MouseButton1Click:Connect(function()
 	RequestLock:FireServer()
 end)
+UiTheme.Button(lockBtn)
 UiIcons.Attach(lockBtn, "ui-lock")
 
 local rbBtn = Instance.new("TextButton")
@@ -63,6 +68,7 @@ rbBtn.MouseButton1Click:Connect(function()
 		rbBtn.Text = "Gagal: " .. tostring(res)
 	end
 end)
+UiTheme.Button(rbBtn)
 UiIcons.Attach(rbBtn, "ui-trophy")
 
 local dailyBtn = Instance.new("TextButton")
@@ -75,12 +81,16 @@ dailyBtn.MouseButton1Click:Connect(function()
 	local ok, amt = req:InvokeServer()
 	dailyBtn.Text = ok and ("+Rp" .. tostring(amt)) or "Sudah claim hari ini"
 end)
+UiTheme.Button(dailyBtn)
 UiIcons.Attach(dailyBtn, "ui-gift")
 
 local redeemBox = Instance.new("TextBox")
 redeemBox.Size = UDim2.new(1, 0, 0, 40)
 redeemBox.PlaceholderText = "Kode redeem..."
 redeemBox.TextScaled = true
+redeemBox.BackgroundColor3 = Color3.fromRGB(20, 20, 32)
+redeemBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+redeemBox.PlaceholderColor3 = Color3.fromRGB(140, 140, 160)
 redeemBox.Parent = frame
 redeemBox.FocusLost:Connect(function(enter)
 	if not enter then
@@ -99,9 +109,11 @@ stockLabel.Text = "Stok: ..."
 stockLabel.Parent = frame
 
 -- daftar item (Secret disembunyikan: hanya via steal)
+local RarityCode =
+	{ Common = "C", Uncommon = "U", Rare = "R", Epic = "E", Legendary = "L", Mythic = "M", Event = "Ev", Secret = "S" }
 local itemBtns: { [string]: any } = {}
 local function baseText(def)
-	return ("%s [%s] Rp%d -> %d/s"):format(def.Name, def.Rarity, def.Cost, def.CashPerSec)
+	return ("%s[%s] Rp%d %d/s"):format(def.Name, RarityCode[def.Rarity] or "?", def.Cost, def.CashPerSec)
 end
 for _, def in Items.List do
 	if def.Rarity == "Secret" then
@@ -112,6 +124,7 @@ for _, def in Items.List do
 	b.TextScaled = true
 	b.Text = baseText(def)
 	b.Parent = frame
+	UiTheme.Button(b)
 	itemBtns[def.Id] = { btn = b, def = def }
 	b.MouseButton1Click:Connect(function()
 		local ok, res = RequestBuy:InvokeServer(def.Id)

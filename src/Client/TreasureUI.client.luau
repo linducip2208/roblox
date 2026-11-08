@@ -3,6 +3,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SharedT = ReplicatedStorage:WaitForChild("Shared")
 local UiIconsT = require(SharedT:WaitForChild("UiIcons"))
+local UiThemeT = require(SharedT:WaitForChild("UiTheme"))
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestRiddle = remotes:WaitForChild("RequestRiddle") :: RemoteFunction
 local SubmitAnswer = remotes:WaitForChild("SubmitAnswer") :: RemoteFunction
@@ -24,6 +25,7 @@ frame.Size = UDim2.new(0, 360, 0, 480)
 frame.Position = UDim2.new(0, 16, 0.5, -240)
 frame.BackgroundTransparency = 0.15
 frame.Parent = gui
+UiThemeT.Panel(frame)
 
 local layout = Instance.new("UIListLayout")
 layout.Parent = frame
@@ -35,6 +37,7 @@ qLabel.TextScaled = true
 qLabel.TextWrapped = true
 qLabel.Text = "Memuat teka-teki..."
 qLabel.Parent = frame
+UiThemeT.Label(qLabel)
 
 local choiceBtns = {}
 for i = 1, 4 do
@@ -43,6 +46,7 @@ for i = 1, 4 do
 	b.TextScaled = true
 	b.Text = "..."
 	b.Parent = frame
+	UiThemeT.Button(b)
 	b.MouseButton1Click:Connect(function()
 		local ok, res = SubmitAnswer:InvokeServer(currentId, i)
 		if ok then
@@ -65,12 +69,14 @@ hintLabel.TextScaled = true
 hintLabel.TextWrapped = true
 hintLabel.Text = ""
 hintLabel.Parent = frame
+UiThemeT.Label(hintLabel)
 
 local hintBtn = Instance.new("TextButton")
 hintBtn.Size = UDim2.new(1, 0, 0, 40)
 hintBtn.TextScaled = true
 hintBtn.Text = "💡 Minta Hint (gratis/cooldown)"
 hintBtn.Parent = frame
+UiThemeT.Button(hintBtn)
 hintBtn.MouseButton1Click:Connect(function()
 	if not currentId then
 		return
@@ -85,12 +91,14 @@ compassLabel.Size = UDim2.new(1, 0, 0, 36)
 compassLabel.TextScaled = true
 compassLabel.Text = "Kompas: -"
 compassLabel.Parent = frame
+UiThemeT.Label(compassLabel)
 
 local compassBtn = Instance.new("TextButton")
 compassBtn.Size = UDim2.new(1, 0, 0, 40)
 compassBtn.TextScaled = true
 compassBtn.Text = "🧭 Cek Kompas"
 compassBtn.Parent = frame
+UiThemeT.Button(compassBtn)
 compassBtn.MouseButton1Click:Connect(function()
 	local ok, res = CompassPing:InvokeServer()
 	compassLabel.Text = ok and ("Kompas: " .. tostring(res)) or tostring(res)
@@ -102,6 +110,7 @@ digBtn.Size = UDim2.new(1, 0, 0, 48)
 digBtn.TextScaled = true
 digBtn.Text = "⛏️ GALI DI SINI"
 digBtn.Parent = frame
+UiThemeT.Button(digBtn)
 digBtn.MouseButton1Click:Connect(function()
 	local ok, res = RequestDig:InvokeServer()
 	if ok then
@@ -117,6 +126,7 @@ toolBtn.Size = UDim2.new(1, 0, 0, 40)
 toolBtn.TextScaled = true
 toolBtn.Text = "🛠️ Beli Sekop (5rb) / Kompas (3rb)"
 toolBtn.Parent = frame
+UiThemeT.Button(toolBtn)
 toolBtn.MouseButton1Click:Connect(function()
 	local _ok1, r1 = BuyTool:InvokeServer("shovel")
 	local _ok2, r2 = BuyTool:InvokeServer("compass")
@@ -126,10 +136,19 @@ UiIconsT.Attach(toolBtn, "ui-shovel")
 UiIconsT.Attach(digBtn, "ui-chest")
 
 function refresh()
-	local r = RequestRiddle:InvokeServer()
-	if not r then
+	local r, err = RequestRiddle:InvokeServer()
+	if r == nil then
 		qLabel.Text = "🏆 Semua 10 teka-teki selesai! Tunggu event minggu depan."
 		currentId = nil
+		return
+	end
+	if r == false then
+		qLabel.Text = "Memuat teka-teki... (" .. tostring(err) .. ")"
+		task.delay(3, function()
+			if currentId == nil then
+				refresh()
+			end
+		end)
 		return
 	end
 	currentId = r.Id

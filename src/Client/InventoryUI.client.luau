@@ -29,6 +29,9 @@ title.Parent = frame
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AssetMap = require(Shared:WaitForChild("AssetMap"))
+local UiTheme = require(Shared:WaitForChild("UiTheme"))
+UiTheme.Panel(frame)
+UiTheme.Title(title)
 
 -- Baris stat: [ikon 28px | teks]. Ikon hanya muncul bila Asset ID sudah diisi
 -- (sebelum upload = teks saja, tidak ada kotak rusak).
@@ -56,6 +59,7 @@ local function statRow(key: string, assetKey: string, placeholder: string)
 	tl.TextXAlignment = Enum.TextXAlignment.Left
 	tl.Text = placeholder
 	tl.Parent = row
+	UiTheme.Label(tl)
 	rows[key] = tl
 end
 
@@ -98,6 +102,7 @@ local function idBtn(text: string, key: string, isProduct: boolean)
 	b.TextScaled = true
 	b.Text = text .. " (...)"
 	b.Parent = frame
+	UiTheme.Button(b)
 	b.MouseButton1Click:Connect(function()
 		local id = ids[key] or 0
 		if id == 0 then
@@ -136,6 +141,7 @@ muteBtn.Size = UDim2.new(1, 0, 0, 40)
 muteBtn.TextScaled = true
 muteBtn.Text = "🔊 Suara: ON"
 muteBtn.Parent = frame
+UiTheme.Button(muteBtn)
 muteBtn.MouseButton1Click:Connect(function()
 	local muted = gui:GetAttribute("Muted") == true
 	gui:SetAttribute("Muted", not muted)

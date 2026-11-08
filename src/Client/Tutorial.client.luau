@@ -16,7 +16,11 @@ local label = Instance.new("TextLabel")
 label.Size = UDim2.new(0, 400, 0, 80)
 label.Position = UDim2.new(0.5, -200, 1, -120)
 label.TextScaled = true
-label.Text = "1. Buka SHOP kanan -> beli Cabai 2. Tunggu tumbuh 3. Kunci base 🔒"
+label.TextWrapped = true
+label.BackgroundColor3 = Color3.fromRGB(28, 28, 42)
+label.BackgroundTransparency = 0.15
+label.TextColor3 = Color3.fromRGB(255, 255, 255)
+label.Text = "1. Buka SHOP kanan -> beli Cabai 2. Tunggu tumbuh 3. Kunci base"
 label.Parent = gui
 
 UpdateHud.OnClientEvent:Connect(function(d)

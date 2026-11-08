@@ -494,11 +494,11 @@ end
 
 function RequestRiddle.OnServerInvoke(player: Player)
 	if not checkRate(player, "RequestRiddle") then
-		return nil
+		return false, "cooldown"
 	end
 	local profile = SaveSystem.Get(player)
 	if not profile then
-		return nil
+		return false, "noload"
 	end
 	return TreasureService.PublicRiddle(profile)
 end
