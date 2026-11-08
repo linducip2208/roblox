@@ -43,6 +43,12 @@ function StealSystem.IsLocked(victim: Player): boolean
 	return u ~= nil and os.time() < u
 end
 
+-- Buka kunci seketika (dipakai DevProduct Unlock Instant).
+function StealSystem.Unlock(player: Player)
+	locks[player.UserId] = 0
+	StealSystem.ClearChannel(player)
+end
+
 function StealSystem.CanSteal(thief: Player, victim: Player): (boolean, string)
 	if thief == victim then
 		return false, "self"

@@ -2,22 +2,29 @@
 local DailyReward = {}
 local REWARDS = { 500, 1500, 4000, 10000, 25000, 60000, 150000 }
 
+-- Kunci hari = tahun+hari-ke (%Y%j) agar aman saat tahun baru.
+local function dayKey(): string
+	return os.date("%Y%j")
+end
+
+local function prevDayKey(): string
+	return os.date("%Y%j", os.time() - 86400)
+end
+
 function DailyReward.CanClaim(profile): boolean
-	local today = os.date("!*t").yday
-	return profile.lastDailyYday ~= today
+	return profile.lastDailyYday ~= dayKey()
 end
 
 function DailyReward.Claim(profile): (boolean, number)
 	if not DailyReward.CanClaim(profile) then return false, 0 end
-	local today = os.date("!*t").yday
 	local streak = (profile.dailyStreak or 0) + 1
 	if streak > 7 then streak = 1 end
-	-- reset jika skip sehari (sederhana: jika yday loncat >1, reset)
-	if profile.lastDailyYday and (today - profile.lastDailyYday > 1) and not (today == 1) then
+	-- reset jika hari terakhir bukan kemarin (skip sehari)
+	if profile.lastDailyYday ~= "" and profile.lastDailyYday ~= prevDayKey() then
 		streak = 1
 	end
 	profile.dailyStreak = streak
-	profile.lastDailyYday = today
+	profile.lastDailyYday = dayKey()
 	return true, REWARDS[streak]
 end
 

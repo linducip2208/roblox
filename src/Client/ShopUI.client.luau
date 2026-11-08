@@ -82,8 +82,11 @@ redeemBox.FocusLost:Connect(function(enter)
 	redeemBox.Text = ok and ("+Rp" .. tostring(res)) or ("Gagal: " .. tostring(res))
 end)
 
--- daftar item
+-- daftar item (Secret disembunyikan: hanya via steal)
 for _, def in Items.List do
+	if def.Rarity == "Secret" then
+		continue
+	end
 	local b = Instance.new("TextButton")
 	b.Size = UDim2.new(1, 0, 0, 50)
 	b.TextScaled = true

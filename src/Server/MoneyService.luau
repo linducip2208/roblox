@@ -38,20 +38,28 @@ function MoneyService.GetMultiplier(player: Player): number
 	return multipliers[player.UserId] or 1
 end
 
--- reason dipakai untuk audit exploit. Return new balance.
+-- reason dipakai untuk audit exploit. Return new balance. Tidak pernah throw.
 function MoneyService.Add(player: Player, rawAmount: number, reason: string): number
-	assert(rawAmount >= 0, "Add negatif")
-	if rawAmount > Config.MaxCashPerTick * 10 then
-		warn(("[Money] suspicious Add %d %s %s"):format(rawAmount, player.Name, reason))
-		rawAmount = Config.MaxCashPerTick * 10
+	if type(rawAmount) ~= "number" or rawAmount < 0 then
+		warn(("[Money] Add invalid %s %s %s"):format(tostring(rawAmount), player.Name, tostring(reason)))
+		return balances[player.UserId] or 0
 	end
 	local m = MoneyService.GetMultiplier(player)
 	local final = math.floor(rawAmount * m)
+	-- clamp SETELAH multiplier agar cap efektif
+	local hardCap = Config.MaxCashPerTick * 10
+	if final > hardCap then
+		warn(("[Money] suspicious Add %d %s %s"):format(final, player.Name, tostring(reason)))
+		final = hardCap
+	end
 	balances[player.UserId] = (balances[player.UserId] or 0) + final
 	return balances[player.UserId]
 end
 
 function MoneyService.Spend(player: Player, amount: number): boolean
+	if type(amount) ~= "number" or amount <= 0 then
+		return false
+	end
 	local b = balances[player.UserId] or 0
 	if b < amount then
 		return false

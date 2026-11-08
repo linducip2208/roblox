@@ -5,6 +5,12 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local EventManager = {}
 EventManager.Active = false
 EventManager.EndsAt = 0
+EventManager.CurrentKey = "hujan"
+local gen = 0 -- token agar task lama tidak mematikan event baru
+
+local function activeDef()
+	return Config.Events[EventManager.CurrentKey] or Config.Events[Config.DefaultEvent or "hujan"]
+end
 
 local function getEventRemote()
 	local f = ReplicatedStorage:FindFirstChild("Remotes")
@@ -31,16 +37,35 @@ function EventManager.IsActive(): boolean
 	return true
 end
 
-function EventManager.Start(minutes: number?)
-	minutes = minutes or Config.Event.DurationMinutes
+function EventManager.Start(minutes: number?, eventKey: string?)
+	if EventManager.IsActive() then
+		return -- event sedang jalan, abaikan start ganda (anti spam admin)
+	end
+	eventKey = eventKey or Config.DefaultEvent or "hujan"
+	local def = Config.Events[eventKey] or Config.Events.hujan
+	minutes = minutes or def.DurationMinutes
+	gen += 1
+	local myGen = gen
+	EventManager.CurrentKey = eventKey
 	EventManager.Active = true
 	EventManager.EndsAt = os.time() + minutes * 60
-	getEventRemote():FireAllClients({ active = true, endsAt = EventManager.EndsAt, name = Config.Event.Name })
-	print(("[Event] %s mulai %d mnt"):format(Config.Event.Name, minutes))
+	getEventRemote():FireAllClients({ active = true, endsAt = EventManager.EndsAt, name = def.Name, mult = def.IncomeMultiplier })
+	print(("[Event] %s mulai %d mnt"):format(def.Name, minutes))
 	task.delay(minutes * 60, function()
+		if myGen ~= gen then return end -- sudah diganti event baru
 		EventManager.Active = false
-		getEventRemote():FireAllClients({ active = false, name = Config.Event.Name })
+		getEventRemote():FireAllClients({ active = false, name = def.Name })
 	end)
+end
+
+function EventManager.Multiplier(): number
+	if not EventManager.IsActive() then return 1 end
+	return activeDef().IncomeMultiplier or 1
+end
+
+function EventManager.HintFree(): boolean
+	if not EventManager.IsActive() then return false end
+	return activeDef().HintDiscount == true
 end
 
 -- auto: cek tiap 60s apakah Sabtu 12:00 UTC (=19 WIB)

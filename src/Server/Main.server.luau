@@ -42,6 +42,7 @@ local RequestRebirth = getOrCreate("RequestRebirth", "RemoteFunction")
 local RequestDaily = getOrCreate("RequestDaily", "RemoteFunction")
 local RequestRedeem = getOrCreate("RequestRedeem", "RemoteFunction")
 local UpdateHud = getOrCreate("UpdateHud", "RemoteEvent")
+local EventState = getOrCreate("EventState", "RemoteEvent")
 local DailyReward = require(script.Parent.DailyReward)
 local RedeemCode = require(script.Parent.RedeemCode)
 local Analytics = require(script.Parent.Analytics)
@@ -50,6 +51,9 @@ local InventoryService = require(script.Parent.InventoryService)
 local TreasureConfig = require(ReplicatedStorage.Shared.TreasureConfig)
 
 function RequestRedeem.OnServerInvoke(player: Player, code: string)
+	if type(code) ~= "string" or #code > 32 then
+		return false, "kode_salah"
+	end
 	local profile = SaveSystem.Get(player)
 	if not profile then return false, "noload" end
 	local ok, res = RedeemCode.Redeem(profile, code or "")
@@ -79,6 +83,9 @@ end
 
 -- SHOP: beli bibit (cek stok restock 5 mnt)
 function RequestBuy.OnServerInvoke(player: Player, itemId: string)
+	if type(itemId) ~= "string" or #itemId > 64 then
+		return false, "invalid"
+	end
 	local profile = SaveSystem.Get(player)
 	if not profile then return false, "noload" end
 	local def = Items.ById[itemId]
@@ -133,10 +140,17 @@ end
 
 -- STEAL: auto-pilih item termahal yang grown (client cukup kirim victimUserId)
 function RequestSteal.OnServerInvoke(thief: Player, victimUserId: number, uid: string?)
+	if type(victimUserId) ~= "number" then return false, "victim_off" end
+	if uid ~= nil and (type(uid) ~= "string" or #uid > 64) then
+		return false, "invalid"
+	end
 	local victim = Players:GetPlayerByUserId(victimUserId)
 	if not victim then return false, "victim_off" end
 	local vProfile = SaveSystem.Get(victim)
 	if not vProfile then return false, "victim_noload" end
+	local tProfile = SaveSystem.Get(thief)
+	if not tProfile then return false, "noload" end
+	if not PlotManager.FindFreeSlot(tProfile) then return false, "thief_penuh" end
 	-- jika uid tidak dikirim / tidak valid, pilih otomatis termahal
 	local targetUid = uid
 	if targetUid == nil or targetUid == "" then
@@ -151,6 +165,18 @@ function RequestSteal.OnServerInvoke(thief: Player, victimUserId: number, uid: s
 		end
 		if not best then return false, "nothing_grown" end
 		targetUid = best
+	else
+		-- validasi uid manual: harus milik victim dan sudah grown
+		local found, grown = false, false
+		for _, slot in vProfile.slots do
+			if slot.uid == targetUid then
+				found = true
+				grown = PlotManager.IsGrown(slot)
+				break
+			end
+		end
+		if not found then return false, "invalid" end
+		if not grown then return false, "belum_grown" end
 	end
 	local ok, msg = StealSystem.RequestSteal(thief, victim, targetUid)
 	return ok, msg
@@ -174,10 +200,13 @@ task.spawn(function()
 					lastPos[p.UserId] = hrp.Position
 				end
 
-				-- income (x2 saat event Hujan Kopi)
+				-- income (multiplier mengikuti event aktif)
 				local raw = PlotManager.TickIncome(profile)
-				if EventManager.IsActive() then
-					raw = math.floor(raw * Config.Event.IncomeMultiplier)
+				local mult = 1
+				local okM, m = pcall(function() return EventManager.Multiplier() end)
+				if okM and type(m) == "number" then mult = m end
+				if mult > 1 then
+					raw = math.floor(raw * mult)
 				end
 				if raw > 0 then
 					MoneyService.Add(p, raw, "income")
@@ -197,27 +226,37 @@ task.spawn(function()
 								UpdateHud:FireClient(p, { type = "steal_fail", reason = reason })
 							end
 						elseif (os.clock() - ch.startTime) >= Config.StealChannelTime then
-							-- sukses: pindahkan item
+							-- sukses: pindahkan item (atomik: cek slot dulu, kembalikan slot ASLI jika gagal)
 							local vProfile = SaveSystem.Get(victim)
 							if vProfile then
-								local stolen = PlotManager.RemoveSlotByUid(vProfile, ch.uid)
-								if stolen then
-									local ok2, _ = PlotManager.AddStolenSlot(profile, stolen)
-									if ok2 then
-										StealSystem.SetCooldown(p)
-										StealSystem.ClearChannel(p)
-										Analytics.Steal()
-										UpdateHud:FireClient(p, { type = "steal_ok", itemId = stolen.itemId })
-										UpdateHud:FireClient(victim, { type = "stolen", itemId = stolen.itemId, by = p.Name })
+								if not PlotManager.FindFreeSlot(profile) then
+									StealSystem.ClearChannel(p)
+									UpdateHud:FireClient(p, { type = "steal_fail", reason = "thief_penuh" })
+								else
+									local slotKey: string? = nil
+									for k, slot in vProfile.slots do
+										if slot.uid == ch.uid then slotKey = k break end
+									end
+									local stolen = slotKey and vProfile.slots[slotKey] or nil
+									if stolen and PlotManager.IsGrown(stolen) then
+										vProfile.slots[slotKey] = nil
+										local ok2, _ = PlotManager.AddStolenSlot(profile, stolen)
+										if ok2 then
+											StealSystem.SetCooldown(p)
+											StealSystem.ClearChannel(p)
+											Analytics.Steal()
+											SaveSystem.Save(p)
+											SaveSystem.Save(victim)
+											UpdateHud:FireClient(p, { type = "steal_ok", itemId = stolen.itemId })
+											UpdateHud:FireClient(victim, { type = "stolen", itemId = stolen.itemId, by = p.Name })
+										else
+											-- kembalikan slot ASLI (uid + plantedAt + mutasi utuh)
+											vProfile.slots[slotKey] = stolen
+											StealSystem.ClearChannel(p)
+										end
 									else
-										-- thief penuh, kembalikan
-										vProfile.slots["tmp_" .. ch.uid] = nil
-										-- kembalikan ke victim slot baru biar tidak hilang
-										PlotManager.Plant(vProfile, stolen.itemId)
 										StealSystem.ClearChannel(p)
 									end
-								else
-									StealSystem.ClearChannel(p)
 								end
 							end
 						end
@@ -238,7 +277,7 @@ task.spawn(function()
 	end
 end)
 
--- VISUAL refresh tiap 5 detik (tanaman bola warna + label)
+-- VISUAL refresh tiap 5 detik: hanya plot milik pemain (Owner == UserId)
 task.spawn(function()
 	local ItemsMod = Items
 	while true do
@@ -248,13 +287,10 @@ task.spawn(function()
 			for _, p in Players:GetPlayers() do
 				local profile = SaveSystem.Get(p)
 				if profile then
-					-- cari plot milik player: Plot_N dengan Owner == UserId (assign sederhana: player index)
-					-- MVP: refresh semua plot dengan slot player (nanti pisah per Owner)
 					for _, plot in plots:GetChildren() do
 						if plot:IsA("BasePart") and plot.Name:match("^Plot_") then
 							local o = plot:FindFirstChild("Owner")
-							if o and (o.Value == "" or o.Value == tostring(p.UserId)) then
-								if o.Value == "" then o.Value = tostring(p.UserId) end
+							if o and o.Value == tostring(p.UserId) then
 								local ok, err = pcall(function()
 									PlotVisuals.Refresh(plot, profile.slots, ItemsMod, PlotManager)
 								end)
@@ -269,15 +305,17 @@ task.spawn(function()
 	end
 end)
 
--- ADMIN chat: ;event 1 = mulai event 1 mnt (hanya AdminUserIds)
+-- ADMIN chat: ;event [nama] [menit] — nama: hujan/golden/rush/meteor (hanya AdminUserIds)
 Players.PlayerAdded:Connect(function(p)
 	p.Chatted:Connect(function(msg)
 		if msg:sub(1, 6) == ";event" then
 			if not Config.AdminUserIds[p.UserId] and game.CreatorId ~= p.UserId then
 				return -- bukan admin, abaikan diam-diam (anti abuse)
 			end
-			local mins = tonumber(msg:match("%d+")) or 30
-			EventManager.Start(mins)
+			local key, mins = msg:match(";event%s+(%a+)%s*(%d*)")
+			if not key or Config.Events[key] == nil then key = Config.DefaultEvent or "hujan" end
+			mins = tonumber(mins) or nil
+			EventManager.Start(mins, key)
 		end
 	end)
 end)
@@ -303,7 +341,7 @@ function SubmitAnswer.OnServerInvoke(player: Player, riddleId: string, choiceIdx
 	end
 	choiceIdx = math.floor(choiceIdx)
 	if choiceIdx < 1 or choiceIdx > 4 then return false, "input_invalid" end
-	local ok, res = TreasureService.SubmitAnswer(profile, riddleId, choiceIdx)
+	local ok, res = TreasureService.SubmitAnswer(player.UserId, profile, riddleId, choiceIdx)
 	if ok then
 		-- res = { Zone, RewardCash, RewardKey }: beri reward solve
 		MoneyService.Add(player, res.RewardCash, "riddle:" .. riddleId)
@@ -334,13 +372,13 @@ end
 function CompassPing.OnServerInvoke(player: Player)
 	local profile = SaveSystem.Get(player)
 	if not profile then return false, "noload" end
-	return TreasureService.CompassPing(player, profile)
+	return TreasureService.CompassPing(player.UserId, player, profile)
 end
 
 function RequestDig.OnServerInvoke(player: Player)
 	local profile = SaveSystem.Get(player)
 	if not profile then return false, "noload" end
-	local ok, res = TreasureService.TryDig(player, profile)
+	local ok, res = TreasureService.TryDig(player.UserId, player, profile)
 	if not ok then return false, res end
 	MoneyService.Add(player, res.bonus, "dig:" .. res.riddleId)
 	profile.cash = MoneyService.Get(player)
@@ -350,6 +388,9 @@ function RequestDig.OnServerInvoke(player: Player)
 end
 
 function BuyTool.OnServerInvoke(player: Player, tool: string)
+	if type(tool) ~= "string" or #tool > 16 then
+		return false, "tool_invalid"
+	end
 	local profile = SaveSystem.Get(player)
 	if not profile then return false, "noload" end
 	if tool == "shovel" then
@@ -374,15 +415,55 @@ function BuyTool.OnServerInvoke(player: Player, tool: string)
 	return false, "tool_invalid"
 end
 
+-- Alokasi plot permanen per sesi: 1 pemain = 1 plot (Owner = UserId string)
+local function assignPlot(p: Player)
+	local plots = workspace:FindFirstChild("Plots")
+	if not plots then return end
+	for _, plot in plots:GetChildren() do
+		if plot:IsA("BasePart") and plot.Name:match("^Plot_") then
+			local o = plot:FindFirstChild("Owner")
+			if o and o.Value == "" then
+				o.Value = tostring(p.UserId)
+				return
+			end
+		end
+	end
+end
+
+local function releasePlot(p: Player)
+	local plots = workspace:FindFirstChild("Plots")
+	if not plots then return end
+	for _, plot in plots:GetChildren() do
+		local o = plot and plot:FindFirstChild("Owner")
+		if o and o.Value == tostring(p.UserId) then
+			o.Value = ""
+			-- bersihkan visual crop agar tidak tertinggal
+			for _, c in plot:GetChildren() do
+				if c.Name == "Crop" then c:Destroy() end
+			end
+		end
+	end
+end
+
 Players.PlayerAdded:Connect(function(p)
 	Analytics.Join()
 	local profile = SaveSystem.Load(p)
+	if not profile then
+		task.wait(5)
+		profile = SaveSystem.Load(p)
+	end
+	if not profile then
+		-- DataStore down: tendang agar data cloud tidak tertimpa default
+		p:Kick("Data gagal dimuat. Coba join lagi dalam 1 menit.")
+		return
+	end
 	InventoryService.Ensure(profile)
-	TreasureService.BindUid(profile, p.UserId)
+	TreasureService.BindUid(p.UserId, profile)
 	MoneyService.InitPlayer(p, profile)
 	MoneyService.RefreshMultiplier(p, profile)
 	Leaderboard.Attach(p, profile)
 	StealSystem.LockBase(p, 0, false) -- spawn protection 60s
+	assignPlot(p)
 	-- kirim offline popup + stok shop
 	task.defer(function()
 		UpdateHud:FireClient(p, { type = "welcome", offline = profile.offlineEarned or 0, cash = profile.cash })
@@ -399,6 +480,7 @@ MarketplaceService.ProcessReceipt = function(info)
 end
 
 Players.PlayerRemoving:Connect(function(p)
+	releasePlot(p)
 	lastPos[p.UserId] = nil
 end)
 

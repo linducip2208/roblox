@@ -6,11 +6,33 @@ local GamepassHandler = {}
 local luckUntil: { [number]: number } = {}
 
 function GamepassHandler.HasLuck(player: Player): boolean
-	return (luckUntil[player.UserId] or 0) > os.time()
+	if (luckUntil[player.UserId] or 0) > os.time() then
+		return true
+	end
+	-- fallback persisten (selamat dari relog)
+	local ok, SaveSystem = pcall(require, script.Parent:WaitForChild("SaveSystem"))
+	if ok and SaveSystem then
+		local p = SaveSystem.Get(player)
+		if p and (p.luckUntil or 0) > os.time() then
+			luckUntil[player.UserId] = p.luckUntil
+			return true
+		end
+	end
+	return false
 end
 
 function GamepassHandler.GrantLuck(player: Player, minutes: number)
-	luckUntil[player.UserId] = os.time() + minutes * 60
+	local until = os.time() + minutes * 60
+	luckUntil[player.UserId] = until
+	local ok, SaveSystem = pcall(require, script.Parent:WaitForChild("SaveSystem"))
+	if ok and SaveSystem then
+		local SaveSys = SaveSystem
+		local p = SaveSys.Get(player)
+		if p then
+			p.luckUntil = until
+			SaveSys.Save(player)
+		end
+	end
 end
 
 -- dipanggil dari Main saat ProcessReceipt DevProduct
@@ -20,11 +42,7 @@ function GamepassHandler.OnProductBought(player: Player, productId: number)
 		return true
 	elseif productId == Config.Products.UnlockInstant then
 		local StealSystem = require(script.Parent:WaitForChild("StealSystem"))
-		local SaveSystem = require(script.Parent:WaitForChild("SaveSystem"))
-		local p = SaveSystem.Get(player)
-		if p then
-			StealSystem.LockBase(player, 0, false) -- reset lock = unlock instan versi murah
-		end
+		StealSystem.Unlock(player)
 		return true
 	end
 	return false

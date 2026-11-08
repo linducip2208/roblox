@@ -2,7 +2,7 @@
 
 Genre: Simulation idle + Steal (ala Grow a Garden x Steal a Brainrot)
 Target: monetisasi serius, update mingguan Sabtu
-Status: **22 Luau, 0 TODO, `rojo build` sukses (game.rbxlx 53KB)**
+Status: **25 Luau, 0 TODO, `rojo build` sukses (game.rbxlx 53KB)**
 
 ## Quick Start (Drive D:)
 1. Install Roblox Studio ke D: — `PowerShell -ExecutionPolicy Bypass -File tools/install-studio-D.ps1` (as Admin)

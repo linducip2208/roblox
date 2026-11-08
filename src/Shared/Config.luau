@@ -42,6 +42,15 @@ local Config = {
 		AutoSaturday19WIB = true, -- Sabtu 19:00 WIB (12:00 UTC)
 	},
 
+	-- Katalog event (dipilih via ;event <nama> [menit]); auto Sabtu pakai DefaultEvent.
+	Events = {
+		hujan = { Name = "Hujan Kopi", DurationMinutes = 30, IncomeMultiplier = 2 },
+		golden = { Name = "Golden Harvest", DurationMinutes = 20, IncomeMultiplier = 3 },
+		rush = { Name = "Treasure Rush", DurationMinutes = 20, IncomeMultiplier = 2, HintDiscount = true },
+		meteor = { Name = "Meteor Shower", DurationMinutes = 15, IncomeMultiplier = 4 },
+	},
+	DefaultEvent = "hujan",
+
 	-- Mutasi: 22 base x 4 = 88 kombinasi tanpa upload 88x (cukup tint + decal varian)
 	Mutations = {
 		Normal = 1,
