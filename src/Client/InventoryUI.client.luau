@@ -13,6 +13,7 @@ local player = Players.LocalPlayer
 local gui = Instance.new("ScreenGui")
 gui.Name = "InventoryGui"
 gui.ResetOnSpawn = false
+gui.DisplayOrder = 10
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("ScrollingFrame")
@@ -31,7 +32,7 @@ toggleBtn.Font = Enum.Font.GothamBold
 toggleBtn.TextSize = 22
 toggleBtn.Text = "X"
 toggleBtn.Parent = gui
-UiTheme.Button(toggleBtn, UiTheme.Panel)
+UiTheme.Button(toggleBtn, UiTheme.Bg)
 UiTheme.Hover(toggleBtn)
 toggleBtn.MouseButton1Click:Connect(function()
 	UiPanels.Toggle("profile")
@@ -39,7 +40,7 @@ end)
 UiPanels.Register("profile", function(v)
 	frame.Visible = v
 	toggleBtn.Text = v and "X" or "P"
-end, true)
+end, false) -- default terlipat; buka via HUD/nav (eksklusif dengan Shop/Harta)
 
 local layout = Instance.new("UIListLayout")
 layout.Parent = frame

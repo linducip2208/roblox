@@ -310,8 +310,11 @@ task.spawn(function()
 				if mult > 1 then
 					raw = math.floor(raw * mult)
 				end
+				local gained = 0
 				if raw > 0 then
+					local before = MoneyService.Get(p)
 					MoneyService.Add(p, raw, "income")
+					gained = MoneyService.Get(p) - before
 				end
 				profile.cash = MoneyService.Get(p)
 
@@ -386,6 +389,8 @@ task.spawn(function()
 					cash = MoneyService.Get(p),
 					mult = MoneyService.GetMultiplier(p),
 					locked = StealSystem.IsLocked(p),
+					income = gained,
+					level = (profile.treasure and profile.treasure.level) or 1,
 				})
 			end
 		end

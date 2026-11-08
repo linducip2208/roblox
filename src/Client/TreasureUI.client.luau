@@ -19,6 +19,7 @@ local currentId: string? = nil
 local gui = Instance.new("ScreenGui")
 gui.Name = "TreasureGui"
 gui.ResetOnSpawn = false
+gui.DisplayOrder = 10
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("ScrollingFrame")
@@ -38,7 +39,7 @@ toggleBtn.Font = Enum.Font.GothamBold
 toggleBtn.TextSize = 22
 toggleBtn.Text = "M"
 toggleBtn.Parent = gui
-UiThemeT.Button(toggleBtn, UiThemeT.Panel)
+UiThemeT.Button(toggleBtn, UiThemeT.Bg)
 UiThemeT.Hover(toggleBtn)
 toggleBtn.MouseButton1Click:Connect(function()
 	UiPanelsT.Toggle("treasure")
@@ -147,7 +148,8 @@ digBtn.TextSize = 18
 digBtn.TextTruncate = Enum.TextTruncate.AtEnd
 digBtn.Text = "⛏️ GALI DI SINI"
 digBtn.Parent = frame
-UiThemeT.Button(digBtn, UiThemeT.Accent)
+UiThemeT.Button(digBtn, UiThemeT.Gold)
+digBtn.TextColor3 = UiThemeT.DarkText
 UiThemeT.Hover(digBtn)
 digBtn.TextColor3 = Color3.fromRGB(20, 20, 20)
 digBtn.MouseButton1Click:Connect(function()

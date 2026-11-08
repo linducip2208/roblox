@@ -16,6 +16,15 @@ function UiPanels.SetVisible(name: string, v: boolean)
 	if not p then
 		return false
 	end
+	if v then
+		-- Eksklusif: satu panel utama aktif dalam satu waktu.
+		for other, q in pairs(panels) do
+			if other ~= name and q.visible then
+				q.visible = false
+				q.set(false)
+			end
+		end
+	end
 	p.visible = v
 	p.set(v)
 	return true

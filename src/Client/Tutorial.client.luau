@@ -10,6 +10,7 @@ local done = false
 local gui = Instance.new("ScreenGui")
 gui.Name = "TutorialGui"
 gui.ResetOnSpawn = false
+gui.DisplayOrder = 30
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local label = Instance.new("TextLabel")

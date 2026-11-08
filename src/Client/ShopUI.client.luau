@@ -16,6 +16,7 @@ local player = Players.LocalPlayer
 local gui = Instance.new("ScreenGui")
 gui.Name = "ShopGui"
 gui.ResetOnSpawn = false
+gui.DisplayOrder = 10
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("ScrollingFrame")
@@ -34,7 +35,7 @@ toggleBtn.Font = Enum.Font.GothamBold
 toggleBtn.TextSize = 22
 toggleBtn.Text = "X"
 toggleBtn.Parent = gui
-UiTheme.Button(toggleBtn, UiTheme.Panel)
+UiTheme.Button(toggleBtn, UiTheme.Bg)
 UiTheme.Hover(toggleBtn)
 toggleBtn.MouseButton1Click:Connect(function()
 	UiPanels.Toggle("shop")
@@ -96,7 +97,7 @@ rbBtn.MouseButton1Click:Connect(function()
 		rbBtn.Text = "Gagal: " .. tostring(res)
 	end
 end)
-UiTheme.Button(rbBtn, UiTheme.Accent)
+UiTheme.Button(rbBtn, UiTheme.Gold)
 UiTheme.Hover(rbBtn)
 rbBtn.TextColor3 = Color3.fromRGB(20, 20, 20)
 UiIcons.Attach(rbBtn, "ui-trophy")
@@ -124,11 +125,11 @@ redeemBox.Font = Enum.Font.Gotham
 redeemBox.TextSize = 16
 redeemBox.TextTruncate = Enum.TextTruncate.AtEnd
 redeemBox.BackgroundColor3 = Color3.fromRGB(20, 20, 32)
-redeemBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-redeemBox.PlaceholderColor3 = Color3.fromRGB(140, 140, 160)
+redeemBox.TextColor3 = UiTheme.Text
+redeemBox.PlaceholderColor3 = UiTheme.Dim
 redeemBox.Parent = frame
 UiTheme.Corner(redeemBox, 8)
-UiTheme.Stroke(redeemBox, UiTheme.Accent)
+UiTheme.Stroke(redeemBox, UiTheme.Gold)
 redeemBox.FocusLost:Connect(function(enter)
 	if not enter then
 		return
