@@ -36,11 +36,15 @@ function InventoryService.GiveCompass(profile): boolean
 end
 
 function InventoryService.SpendKeys(profile, n: number): boolean
-	local t = InventoryService.Ensure(profile)
-	if t.keys < n then
+	-- Tolak kuantitas non-positif: SpendKeys(p, -5) tanpa guard akan MENAMBAH kunci.
+	if type(n) ~= "number" or n ~= n or n <= 0 then
 		return false
 	end
-	t.keys -= n
+	local t = InventoryService.Ensure(profile)
+	if t.keys < math.floor(n) then
+		return false
+	end
+	t.keys -= math.floor(n)
 	return true
 end
 

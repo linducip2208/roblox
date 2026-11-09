@@ -17,21 +17,30 @@ gui.DisplayOrder = 10
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("ScrollingFrame")
+frame.AnchorPoint = Vector2.new(1, 0.5)
 frame.Size = UDim2.new(0, 300, 0, 380)
-frame.Position = UDim2.new(1, -320, 0.5, -190)
+frame.Position = UDim2.new(1, -16, 0.5, 0)
 frame.CanvasSize = UDim2.new(0, 0, 0, 0)
 frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 frame.Parent = gui
 UiTheme.DecoratePanel(frame)
+UiTheme.MakeScrollable(frame)
 local frameCapI = Instance.new("UISizeConstraint")
 frameCapI.MaxSize = Vector2.new(340, 600)
 frameCapI.MinSize = Vector2.new(240, 200)
 frameCapI.Parent = frame
 
+-- Jepit ke viewport agar tidak off-screen di 320px / landscape pendek.
+local function fitProfile()
+	UiTheme.FitPanel(frame, 300, 380, 32, 120)
+end
+fitProfile()
+
 -- Tombol lipat profil
 local toggleBtn = Instance.new("TextButton")
+toggleBtn.AnchorPoint = Vector2.new(1, 0.5)
 toggleBtn.Size = UDim2.new(0, 44, 0, 44)
-toggleBtn.Position = UDim2.new(1, -56, 0.5, -22)
+toggleBtn.Position = UDim2.new(1, -16, 0.5, 0)
 toggleBtn.Font = Enum.Font.GothamBold
 toggleBtn.TextSize = 22
 toggleBtn.Text = "X"
@@ -46,8 +55,11 @@ UiPanels.Register("profile", function(v)
 	toggleBtn.Text = v and "X" or "P"
 end, false)
 local camP = workspace.CurrentCamera
-if camP and camP.ViewportSize.X < 700 then
-	UiPanels.SetVisible("profile", false)
+if camP then
+	camP:GetPropertyChangedSignal("ViewportSize"):Connect(fitProfile)
+	if camP.ViewportSize.X < 700 then
+		UiPanels.SetVisible("profile", false)
+	end
 end -- default terlipat; buka via HUD/nav (eksklusif dengan Shop/Harta)
 gui.Destroying:Connect(function()
 	UiPanels.Unregister("profile")
@@ -65,9 +77,6 @@ title.TextTruncate = Enum.TextTruncate.AtEnd
 title.Text = "Profil"
 title.Parent = frame
 UiTheme.Title(title)
-UiTheme.Title(title)
-UiTheme.Button(toggleBtn)
-UiTheme.Hover(toggleBtn)
 
 -- Baris stat: [ikon 28px | teks]. Ikon hanya muncul bila Asset ID sudah diisi
 -- (sebelum upload = teks saja, tidak ada kotak rusak).
@@ -172,7 +181,10 @@ task.spawn(function()
 		task.wait(5)
 		for i, rec in dynBtns do
 			local id = ids[dynKeys[i]] or 0
-			rec.b.Text = dynNames[i] .. (id == 0 and " (segera hadir)" or "")
+			local t = dynNames[i] .. (id == 0 and " (segera hadir)" or "")
+			if rec.b.Text ~= t then
+				rec.b.Text = t -- tulis hanya saat berubah (hindari layout ulang)
+			end
 		end
 	end
 end)

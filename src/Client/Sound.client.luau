@@ -19,7 +19,9 @@ local function beep(id: string, vol: number)
 	local s = Instance.new("Sound")
 	s.SoundId = id
 	s.Volume = vol or 0.5
-	s.Parent = workspace
+	-- parent lokal (PlayerGui): tak mereplikasi, tak mengotori workspace
+	local pg = player:FindFirstChildOfClass("PlayerGui")
+	s.Parent = pg or workspace
 	s:Play()
 	s.Ended:Connect(function()
 		s:Destroy()

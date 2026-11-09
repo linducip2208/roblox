@@ -78,7 +78,13 @@ function MoneyService.Spend(player: Player, amount: number): boolean
 end
 
 function MoneyService.Set(player: Player, amount: number)
-	balances[player.UserId] = amount
+	-- Satu-satunya penulis selain Add/Spend (dipakai rebirth). Validasi penuh:
+	-- NaN/inf/negatif tidak boleh melahirkan saldo negatif atau NaN.
+	local b = 0
+	if finite(amount) then
+		b = math.clamp(math.floor(amount), 0, 1e15)
+	end
+	balances[player.UserId] = b
 end
 
 Players.PlayerRemoving:Connect(function(p)

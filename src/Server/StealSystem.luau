@@ -85,6 +85,12 @@ function StealSystem.RequestSteal(thief: Player, victim: Player, uid: string): (
 	if holder ~= nil and holder ~= thief.UserId then
 		return false, "item_diperebutkan"
 	end
+	-- Thief memulai channel item BARU: bebaskan lock item lama miliknya agar
+	-- item lama tidak terkunci selamanya (lock bocor = item tak bisa dicuri siapa pun).
+	local prev = channels[thief.UserId]
+	if prev and prev.uid ~= uid and itemLocks[prev.uid] == thief.UserId then
+		itemLocks[prev.uid] = nil
+	end
 	itemLocks[uid] = thief.UserId
 	channels[thief.UserId] = { victimId = victim.UserId, uid = uid, startTime = os.clock(), startPos = charPos(thief) }
 	return true, "channel_started"

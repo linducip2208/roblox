@@ -51,6 +51,9 @@ local InventoryService = require(script.Parent.InventoryService)
 local TreasureConfig = require(ReplicatedStorage.Shared.TreasureConfig)
 
 local lastPos: { [number]: Vector3 } = {}
+-- Snapshot HUD terakhir per pemain: kirim tick hanya bila ada yang berubah
+-- (tampilan display-correct: tak ada perubahan = label sudah benar).
+local lastHud: { [number]: string } = {}
 
 -- Rate limit generik per pemain per remote (detik). Defense-in-depth;
 -- service spesifik (steal/treasure) punya cooldown sendiri.
@@ -94,7 +97,7 @@ function RequestRedeem.OnServerInvoke(player: Player, code: string)
 	if not checkRate(player, "RequestRedeem") then
 		return false, "terlalu_cepat"
 	end
-	if type(code) ~= "string" or #code > 32 then
+	if type(code) ~= "string" or #code > 32 or code:match("^[A-Za-z0-9_ ]+$") == nil then
 		return false, "kode_salah"
 	end
 	local profile = SaveSystem.Get(player)
@@ -141,7 +144,7 @@ function RequestBuy.OnServerInvoke(player: Player, itemId: string)
 	if not checkRate(player, "RequestBuy") then
 		return false, "terlalu_cepat"
 	end
-	if type(itemId) ~= "string" or #itemId > 64 then
+	if type(itemId) ~= "string" or #itemId > 64 or itemId:match("^[%w_]+$") == nil then
 		return false, "invalid"
 	end
 	local profile = SaveSystem.Get(player)
@@ -164,12 +167,25 @@ function RequestBuy.OnServerInvoke(player: Player, itemId: string)
 	if MoneyService.Get(player) < def.Cost then
 		return false, "miskin"
 	end
+	-- Urutan anti-celah: Spend DULU (dicek), baru Plant. Plant gagal = kembalikan
+	-- saldo persis via Set (Add tidak cocok: ia mengalikan multiplier rebirth).
+	-- Tanpa yield di antara Spend dan Set sehingga atomik lawan income-tick.
+	local before = MoneyService.Get(player)
+	if not MoneyService.Spend(player, def.Cost) then
+		return false, "miskin"
+	end
 	local ok, slotOrErr = PlotManager.Plant(profile, itemId)
 	if not ok then
+		MoneyService.Set(player, before)
 		return false, slotOrErr
 	end
 	if not (def :: any).EventOnly then
-		ShopRotation.Take(itemId)
+		if not ShopRotation.Take(itemId) then
+			-- stok habis karena balapan: kembalikan slot + saldo persis, jangan beri item gratis
+			profile.slots[slotOrErr] = nil
+			MoneyService.Set(player, before)
+			return false, "out_of_stock"
+		end
 	end
 	-- Luck boost: percepat growth 25% visual saja (plantedAt dimajukan)
 	if GamepassHandler.HasLuck(player) then
@@ -178,7 +194,6 @@ function RequestBuy.OnServerInvoke(player: Player, itemId: string)
 			slot.plantedAt -= math.floor(def.GrowthTime * 0.25)
 		end
 	end
-	MoneyService.Spend(player, def.Cost)
 	Analytics.Buy(def.Cost)
 	return true, slotOrErr
 end
@@ -222,8 +237,15 @@ function RequestSteal.OnServerInvoke(thief: Player, victimUserId: number, uid: s
 	if not checkRate(thief, "RequestSteal") then
 		return false, "terlalu_cepat"
 	end
-	if type(victimUserId) ~= "number" then
+	if type(victimUserId) ~= "number" or victimUserId ~= victimUserId then
 		return false, "victim_off"
+	end
+	victimUserId = math.floor(victimUserId)
+	if victimUserId <= 0 or victimUserId > 9999999999 then
+		return false, "victim_off"
+	end
+	if victimUserId == thief.UserId then
+		return false, "self"
 	end
 	if uid ~= nil and (type(uid) ~= "string" or #uid > 64) then
 		return false, "invalid"
@@ -284,6 +306,16 @@ end
 task.spawn(function()
 	while true do
 		task.wait(Config.IncomeTick)
+		-- multiplier global: sama untuk semua pemain dalam satu tick, hitung sekali
+		local tickMult = 1
+		do
+			local okM, m = pcall(function()
+				return EventManager.Multiplier()
+			end)
+			if okM and type(m) == "number" then
+				tickMult = m
+			end
+		end
 		for _, p in Players:GetPlayers() do
 			local profile = SaveSystem.Get(p)
 			if profile then
@@ -298,15 +330,9 @@ task.spawn(function()
 					lastPos[p.UserId] = hrp.Position
 				end
 
-				-- income (multiplier mengikuti event aktif)
+				-- income (multiplier mengikuti event aktif, dihitung sekali per tick)
 				local raw = PlotManager.TickIncome(profile)
-				local mult = 1
-				local okM, m = pcall(function()
-					return EventManager.Multiplier()
-				end)
-				if okM and type(m) == "number" then
-					mult = m
-				end
+				local mult = tickMult
 				if mult > 1 then
 					raw = math.floor(raw * mult)
 				end
@@ -383,15 +409,26 @@ task.spawn(function()
 					end
 				end
 
-				-- push HUD
-				UpdateHud:FireClient(p, {
-					type = "tick",
-					cash = MoneyService.Get(p),
-					mult = MoneyService.GetMultiplier(p),
-					locked = StealSystem.IsLocked(p),
-					income = gained,
-					level = (profile.treasure and profile.treasure.level) or 1,
-				})
+				-- push HUD: delta saja (hemat replikasi saat idle/tak berubah)
+				local hudCash = MoneyService.Get(p)
+				local hudMult = MoneyService.GetMultiplier(p)
+				local hudLocked = StealSystem.IsLocked(p)
+				local hudLevel = (profile.treasure and profile.treasure.level) or 1
+				local snap = table.concat(
+					{ tostring(hudCash), tostring(hudMult), tostring(hudLocked), tostring(gained), tostring(hudLevel) },
+					"|"
+				)
+				if snap ~= lastHud[p.UserId] then
+					lastHud[p.UserId] = snap
+					UpdateHud:FireClient(p, {
+						type = "tick",
+						cash = hudCash,
+						mult = hudMult,
+						locked = hudLocked,
+						income = gained,
+						level = hudLevel,
+					})
+				end
 			end
 		end
 	end
@@ -404,21 +441,26 @@ task.spawn(function()
 		task.wait(5)
 		local plots = workspace:FindFirstChild("Plots")
 		if plots then
+			-- satu pass per tick: petakan Owner -> plot (data tick yang sama, tanpa cache basi)
+			local byOwner = {}
+			for _, plot in plots:GetChildren() do
+				if plot:IsA("BasePart") and plot.Name:match("^Plot_") then
+					local o = plot:FindFirstChild("Owner")
+					if o then
+						byOwner[o.Value] = plot
+					end
+				end
+			end
 			for _, p in Players:GetPlayers() do
 				local profile = SaveSystem.Get(p)
 				if profile then
-					for _, plot in plots:GetChildren() do
-						if plot:IsA("BasePart") and plot.Name:match("^Plot_") then
-							local o = plot:FindFirstChild("Owner")
-							if o and o.Value == tostring(p.UserId) then
-								local ok, err = pcall(function()
-									PlotVisuals.Refresh(plot, profile.slots, ItemsMod, PlotManager)
-								end)
-								if not ok then
-									warn(err)
-								end
-								break
-							end
+					local plot = byOwner[tostring(p.UserId)]
+					if plot then
+						local ok, err = pcall(function()
+							PlotVisuals.Refresh(plot, profile.slots, ItemsMod, PlotManager)
+						end)
+						if not ok then
+							warn(err)
 						end
 					end
 				end
@@ -428,17 +470,26 @@ task.spawn(function()
 end)
 
 -- ADMIN chat: ;event [nama] [menit] — nama: hujan/golden/rush/meteor (hanya AdminUserIds)
+-- Kosong = nonaktif aman: hanya game.CreatorId yang lolos. Ada cooldown anti-spam.
+local lastAdminCmd: { [number]: number } = {}
 Players.PlayerAdded:Connect(function(p)
 	p.Chatted:Connect(function(msg)
 		if msg:sub(1, 6) == ";event" then
 			if not Config.AdminUserIds[p.UserId] and game.CreatorId ~= p.UserId then
 				return -- bukan admin, abaikan diam-diam (anti abuse)
 			end
+			if os.clock() - (lastAdminCmd[p.UserId] or -99) < 5 then
+				return
+			end
+			lastAdminCmd[p.UserId] = os.clock()
 			local key, mins = msg:match(";event%s+(%a+)%s*(%d*)")
 			if not key or Config.Events[key] == nil then
 				key = Config.DefaultEvent or "hujan"
 			end
 			mins = tonumber(mins) or nil
+			if mins ~= nil then
+				mins = math.clamp(math.floor(mins), 1, 120)
+			end
 			EventManager.Start(mins, key)
 		end
 	end)
@@ -516,7 +567,10 @@ function SubmitAnswer.OnServerInvoke(player: Player, riddleId: string, choiceIdx
 	if not profile then
 		return false, "noload"
 	end
-	if type(riddleId) ~= "string" or type(choiceIdx) ~= "number" then
+	if type(riddleId) ~= "string" or #riddleId > 16 or riddleId:match("^[%w_]+$") == nil then
+		return false, "input_invalid"
+	end
+	if type(choiceIdx) ~= "number" or choiceIdx ~= choiceIdx then
 		return false, "input_invalid"
 	end
 	choiceIdx = math.floor(choiceIdx)
@@ -545,7 +599,7 @@ function RequestHint.OnServerInvoke(player: Player, riddleId: string)
 	if not profile then
 		return false, "noload"
 	end
-	if type(riddleId) ~= "string" then
+	if type(riddleId) ~= "string" or #riddleId > 16 or riddleId:match("^[%w_]+$") == nil then
 		return false, "input_invalid"
 	end
 	local ok, hint, cost = TreasureService.RequestHint(profile, riddleId, MoneyService.Get(player))
@@ -607,10 +661,16 @@ function BuyTool.OnServerInvoke(player: Player, tool: string)
 		if profile.treasure.hasShovel then
 			return false, "sudah_punya"
 		end
+		local before = MoneyService.Get(player)
 		if not MoneyService.Spend(player, TreasureConfig.Tools.ShovelCost) then
 			return false, "koin_kurang"
 		end
-		InventoryService.GiveShovel(profile)
+		if not InventoryService.GiveShovel(profile) then
+			-- balapan dua pembelian konkuren: kembalikan saldo persis (Add
+			-- mengalikan multiplier, jadi pakai Set), jangan tagih ganda
+			MoneyService.Set(player, before)
+			return false, "sudah_punya"
+		end
 		profile.cash = MoneyService.Get(player)
 		SaveSystem.Save(player)
 		return true, "sekop_ok"
@@ -618,10 +678,14 @@ function BuyTool.OnServerInvoke(player: Player, tool: string)
 		if profile.treasure.hasCompass then
 			return false, "sudah_punya"
 		end
+		local before = MoneyService.Get(player)
 		if not MoneyService.Spend(player, TreasureConfig.Tools.CompassCost) then
 			return false, "koin_kurang"
 		end
-		InventoryService.GiveCompass(profile)
+		if not InventoryService.GiveCompass(profile) then
+			MoneyService.Set(player, before)
+			return false, "sudah_punya"
+		end
 		profile.cash = MoneyService.Get(player)
 		SaveSystem.Save(player)
 		return true, "kompas_ok"
@@ -721,7 +785,9 @@ end
 Players.PlayerRemoving:Connect(function(p)
 	releasePlot(p)
 	lastPos[p.UserId] = nil
+	lastHud[p.UserId] = nil
 	rateLast[p.UserId] = nil
+	lastAdminCmd[p.UserId] = nil
 end)
 
 print("[StealKebun] Main loaded")

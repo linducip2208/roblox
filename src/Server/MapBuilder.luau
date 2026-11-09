@@ -16,16 +16,18 @@ function MapBuilder.Build()
 	light.FogEnd = 900
 
 	-- Tanah dasar: tanpanya pemain jatuh ke void (spawn tidak di atas plot).
-	if not workspace:FindFirstChild("GroundKebun") then
-		local g = Instance.new("Part")
+	local g = workspace:FindFirstChild("GroundKebun")
+	if not g then
+		g = Instance.new("Part")
 		g.Name = "GroundKebun"
-		g.Size = Vector3.new(400, 1, 400)
-		g.Position = Vector3.new(0, 0, 0)
-		g.Anchored = true
-		g.Color = Color3.fromRGB(70, 150, 70)
-		g.Material = Enum.Material.Grass
 		g.Parent = workspace
 	end
+	g.Size = Vector3.new(400, 1, 400)
+	g.Position = Vector3.new(0, 0, 0)
+	g.Anchored = true
+	g.CanCollide = true -- tanah harus bisa dipijak
+	g.Color = Color3.fromRGB(70, 150, 70)
+	g.Material = Enum.Material.Grass
 
 	if workspace:FindFirstChild("Plots") == nil then
 		local f = Instance.new("Folder")
@@ -45,11 +47,13 @@ function MapBuilder.Build()
 			base.Name = pname
 			base.Size = Vector3.new(16, 1, 16)
 			base.Position = Vector3.new(math.cos(angle) * radius, 1, math.sin(angle) * radius)
-			base.Anchored = true
 			base.Color = GRASS
 			base.Material = Enum.Material.Grass
 			base.Parent = plots
 		end
+		-- Perbaiki properti bila folder/plot parsial atau properti diubah manual.
+		base.Anchored = true
+		base.CanCollide = true -- plot harus bisa dipijak pemain pemiliknya
 		if not base:FindFirstChild("Owner") then
 			local owner = Instance.new("StringValue")
 			owner.Name = "Owner"
@@ -62,35 +66,41 @@ function MapBuilder.Build()
 			pole.Name = "LockPole"
 			pole.Size = Vector3.new(1, 8, 1)
 			pole.Position = base.Position + Vector3.new(6, 4, 6)
-			pole.Anchored = true
+			pole.Color = Color3.fromRGB(255, 255, 255)
+			pole.Material = Enum.Material.SmoothPlastic
 			pole.Parent = base
 		end
+		pole.Anchored = true
 		pole.CanCollide = false -- tiang indikator: jangan halangi jalan
 	end
 
-	-- TradePlaza = safezone no-steal
-	if not workspace:FindFirstChild("TradePlaza") then
-		local plaza = Instance.new("Part")
+	-- TradePlaza = safezone no-steal (nama HARUS sama dengan Config.SafeZoneName).
+	local plaza = workspace:FindFirstChild("TradePlaza")
+	if not plaza then
+		plaza = Instance.new("Part")
 		plaza.Name = "TradePlaza"
-		plaza.Size = Vector3.new(30, 1, 30)
-		plaza.Position = Vector3.new(0, 1, 0)
-		plaza.Anchored = true
-		plaza.Color = Color3.fromRGB(100, 150, 255)
-		plaza.Material = Enum.Material.SmoothPlastic
 		plaza.Parent = workspace
 	end
+	plaza.Size = Vector3.new(30, 1, 30)
+	plaza.Position = Vector3.new(0, 1, 0)
+	plaza.Anchored = true
+	plaza.CanCollide = true
+	plaza.Color = Color3.fromRGB(100, 150, 255)
+	plaza.Material = Enum.Material.SmoothPlastic
 
 	-- Shop
-	if not workspace:FindFirstChild("Shop") then
-		local shop = Instance.new("Part")
+	local shop = workspace:FindFirstChild("Shop")
+	if not shop then
+		shop = Instance.new("Part")
 		shop.Name = "Shop"
-		shop.Size = Vector3.new(12, 6, 12)
-		shop.Position = Vector3.new(0, 4, -25)
-		shop.Anchored = true
-		shop.Color = Color3.fromRGB(255, 200, 50)
-		shop.Material = Enum.Material.WoodPlanks
 		shop.Parent = workspace
 	end
+	shop.Size = Vector3.new(12, 6, 12)
+	shop.Position = Vector3.new(0, 4, -25)
+	shop.Anchored = true
+	shop.CanCollide = true -- balok toko: rintangan, pembelian via UI bukan masuk ke dalam
+	shop.Color = Color3.fromRGB(255, 200, 50)
+	shop.Material = Enum.Material.WoodPlanks
 
 	-- Spawn DI ATAS plaza (bukan di luar) agar tidak jatuh ke void.
 	local sp = workspace:FindFirstChild("SpawnLocation")
@@ -101,6 +111,10 @@ function MapBuilder.Build()
 	sp.Size = Vector3.new(6, 1, 6)
 	sp.Position = Vector3.new(0, 4, 5)
 	sp.Anchored = true
+	sp.CanCollide = true
+	sp.Enabled = true
+	sp.Neutral = true -- tanpa tim: semua pemain boleh spawn di sini
+	sp.AllowTeamChangeOnTouch = false
 
 	MapBuilder.Sign("Rambu_Shop", Vector3.new(0, 12, -25), "TOKO - beli bibit di sini")
 	MapBuilder.Sign("Rambu_Plaza", Vector3.new(0, 9, 0), "PLAZA AMAN - tidak bisa dicuri")
@@ -108,54 +122,64 @@ function MapBuilder.Build()
 	MapBuilder.Trees()
 end
 
--- Pohon hias di tepi map (idempoten, CanCollide false agar ringan & tak menghalangi).
+-- Pohon hias di tepi map (idempoten per nama, CanCollide false agar ringan & tak menghalangi).
 function MapBuilder.Trees()
-	if workspace:FindFirstChild("TreesKebun") ~= nil then
-		return
+	local folder = workspace:FindFirstChild("TreesKebun")
+	if not folder then
+		folder = Instance.new("Folder")
+		folder.Name = "TreesKebun"
+		folder.Parent = workspace
 	end
-	local folder = Instance.new("Folder")
-	folder.Name = "TreesKebun"
-	folder.Parent = workspace
 	for i = 1, 8 do
 		local angle = (i - 1) / 8 * math.pi * 2 + 0.4
 		local x, z = math.cos(angle) * 95, math.sin(angle) * 95
-		local trunk = Instance.new("Part")
-		trunk.Name = "Trunk" .. i
-		trunk.Shape = Enum.PartType.Cylinder
-		trunk.Size = Vector3.new(8, 2, 2) -- silinder: sumbu X = tinggi
-		trunk.CFrame = CFrame.new(x, 4.5, z)
+		local trunk = folder:FindFirstChild("Trunk" .. i)
+		if not trunk then
+			trunk = Instance.new("Part")
+			trunk.Name = "Trunk" .. i
+			trunk.Shape = Enum.PartType.Cylinder
+			trunk.Size = Vector3.new(8, 2, 2) -- silinder: sumbu X = tinggi
+			trunk.CFrame = CFrame.new(x, 4.5, z)
+			trunk.Color = TRUNK
+			trunk.Material = Enum.Material.Wood
+			trunk.Parent = folder
+		end
 		trunk.Anchored = true
 		trunk.CanCollide = false
-		trunk.Color = TRUNK
-		trunk.Material = Enum.Material.Wood
-		trunk.Parent = folder
-		local leaves = Instance.new("Part")
-		leaves.Name = "Leaves" .. i
-		leaves.Shape = Enum.PartType.Ball
-		leaves.Size = Vector3.new(10, 10, 10)
-		leaves.Position = Vector3.new(x, 12, z)
+		local leaves = folder:FindFirstChild("Leaves" .. i)
+		if not leaves then
+			leaves = Instance.new("Part")
+			leaves.Name = "Leaves" .. i
+			leaves.Shape = Enum.PartType.Ball
+			leaves.Size = Vector3.new(10, 10, 10)
+			leaves.Position = Vector3.new(x, 12, z)
+			leaves.Color = LEAF
+			leaves.Material = Enum.Material.Grass
+			leaves.Parent = folder
+		end
 		leaves.Anchored = true
 		leaves.CanCollide = false
-		leaves.Color = LEAF
-		leaves.Material = Enum.Material.Grass
-		leaves.Parent = folder
 	end
 end
 
--- Rambu apung: BillboardGui + tiang. Idempoten (tidak dobel saat rebuild).
+-- Rambu apung: BillboardGui + tiang. Idempoten (tidak dobel saat rebuild,
+-- GUI dibangun ulang bila tiang ada tapi GUI terhapus).
 function MapBuilder.Sign(name: string, pos: Vector3, text: string)
-	if workspace:FindFirstChild(name) then
-		return
+	local pole = workspace:FindFirstChild(name)
+	if not pole then
+		pole = Instance.new("Part")
+		pole.Name = name
+		pole.Size = Vector3.new(0.6, 8, 0.6)
+		pole.Position = pos - Vector3.new(0, 2, 0)
+		pole.Color = Color3.fromRGB(90, 60, 30)
+		pole.Material = Enum.Material.Wood
+		pole.Parent = workspace
 	end
-	local pole = Instance.new("Part")
-	pole.Name = name
-	pole.Size = Vector3.new(0.6, 8, 0.6)
-	pole.Position = pos - Vector3.new(0, 2, 0)
 	pole.Anchored = true
 	pole.CanCollide = false
-	pole.Color = Color3.fromRGB(90, 60, 30)
-	pole.Material = Enum.Material.Wood
-	pole.Parent = workspace
+	if pole:FindFirstChildOfClass("BillboardGui") then
+		return
+	end
 	local gui = Instance.new("BillboardGui")
 	gui.Size = UDim2.new(0, 260, 0, 60)
 	gui.StudsOffset = Vector3.new(0, 3.5, 0)

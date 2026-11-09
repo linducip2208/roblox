@@ -75,12 +75,16 @@ function PlotManager.AddStolenSlot(profile, slotData): (boolean, string?)
 	if not free then
 		return false, "thief_penuh"
 	end
+	local def = Items.ById[slotData.itemId]
+	if not def then
+		return false, "item_invalid"
+	end
 	-- reset plantedAt agar tidak langsung panen duplikat exploit: anggap sudah grown
 	profile.slots[tostring(free)] = {
 		uid = HttpService:GenerateGUID(false),
 		itemId = slotData.itemId,
 		mutation = slotData.mutation or "Normal",
-		plantedAt = os.time() - (Items.ById[slotData.itemId].GrowthTime + 1),
+		plantedAt = os.time() - (def.GrowthTime + 1),
 	}
 	return true, tostring(free)
 end

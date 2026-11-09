@@ -23,17 +23,29 @@ gui.DisplayOrder = 10
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("ScrollingFrame")
+frame.AnchorPoint = Vector2.new(0, 0.5)
 frame.Size = UDim2.new(0, 340, 0, 430)
-frame.Position = UDim2.new(0, 16, 0.5, -230)
+frame.Position = UDim2.new(0, 16, 0.5, 0)
 frame.CanvasSize = UDim2.new(0, 0, 0, 0)
 frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 frame.Parent = gui
 -- visibilitas awal diatur UiPanels.Register di bawah (default terlipat)
 UiThemeT.DecoratePanel(frame)
+UiThemeT.MakeScrollable(frame)
 local frameCapT = Instance.new("UISizeConstraint")
 frameCapT.MaxSize = Vector2.new(380, 620)
 frameCapT.MinSize = Vector2.new(240, 200)
 frameCapT.Parent = frame
+
+-- Jepit ke viewport: 320px portrait maupun landscape pendek tidak off-screen.
+local function fitTreasure()
+	UiThemeT.FitPanel(frame, 340, 430, 32, 120)
+end
+fitTreasure()
+local camT = workspace.CurrentCamera
+if camT then
+	camT:GetPropertyChangedSignal("ViewportSize"):Connect(fitTreasure)
+end
 
 -- Tombol lipat panel harta karun
 local toggleBtn = Instance.new("TextButton")
@@ -75,7 +87,8 @@ for i = 1, 4 do
 	local b = Instance.new("TextButton")
 	b.Size = UDim2.new(1, 0, 0, 44)
 	b.Font = Enum.Font.GothamBold
-	b.TextSize = 17
+	b.TextSize = 15
+	b.TextWrapped = true
 	b.TextTruncate = Enum.TextTruncate.AtEnd
 	b.Text = "..."
 	b.Parent = frame
@@ -89,9 +102,11 @@ for i = 1, 4 do
 				res.RewardCash,
 				res.RewardKey
 			)
+			UiThemeT.StyleStatus(qLabel, "ok")
 			refresh()
 		else
 			qLabel.Text = "Gagal: " .. tostring(res)
+			UiThemeT.StyleStatus(qLabel, "error")
 		end
 	end)
 	table.insert(choiceBtns, b)
@@ -162,9 +177,11 @@ digBtn.MouseButton1Click:Connect(function()
 	local ok, res = RequestDig:InvokeServer()
 	if ok then
 		qLabel.Text = ("🎉 Harta %s ditemukan! Bonus +%d. Level %d"):format(res.riddleId, res.bonus, res.level)
+		UiThemeT.StyleStatus(qLabel, "ok")
 		refresh()
 	else
 		qLabel.Text = "Gali gagal: " .. tostring(res)
+		UiThemeT.StyleStatus(qLabel, "error")
 	end
 end)
 

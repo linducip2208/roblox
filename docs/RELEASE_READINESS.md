@@ -2,7 +2,7 @@
 
 ## Gate teknis (mesin) — LULUS SEMUA
 - [x] Rojo build PASS
-- [x] Rojo build PASS, Selene 0/0, StyLua PASS, verify 27 PASS / 0 FAIL / 2 BLOCKED (ID+admin owner)
+- [x] Rojo build PASS, Selene 0/0, StyLua PASS, verify 44 PASS / 0 FAIL / 2 BLOCKED (ID+admin owner)
 - [x] Tidak ada critical/high bug kode yang diketahui
 - [x] Tidak ada data-loss path yang diketahui (fail-closed + envelope + backup validasi)
 - [x] Session lock + receipt idempoten terimplementasi (belum uji live)

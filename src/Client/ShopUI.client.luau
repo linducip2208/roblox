@@ -20,21 +20,30 @@ gui.DisplayOrder = 10
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("ScrollingFrame")
+frame.AnchorPoint = Vector2.new(1, 0)
 frame.Size = UDim2.new(0, 340, 0, 420)
-frame.Position = UDim2.new(1, -360, 0, 20)
+frame.Position = UDim2.new(1, -16, 0, 20)
 frame.CanvasSize = UDim2.new(0, 0, 0, 0)
 frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 frame.Parent = gui
 UiTheme.DecoratePanel(frame)
+UiTheme.MakeScrollable(frame)
 local frameCap = Instance.new("UISizeConstraint")
 frameCap.MaxSize = Vector2.new(380, 640)
 frameCap.MinSize = Vector2.new(240, 200)
 frameCap.Parent = frame
 
+-- Jepit ke viewport agar 320px tidak off-screen; ikuti rotasi portrait/landscape.
+local function fitShop()
+	UiTheme.FitPanel(frame, 340, 420, 32, 120)
+end
+fitShop()
+
 -- Tombol lipat: Shop bisa disembunyikan biar layar lega
 local toggleBtn = Instance.new("TextButton")
+toggleBtn.AnchorPoint = Vector2.new(1, 0)
 toggleBtn.Size = UDim2.new(0, 44, 0, 44)
-toggleBtn.Position = UDim2.new(1, -56, 0, 20)
+toggleBtn.Position = UDim2.new(1, -16, 0, 20)
 toggleBtn.Font = Enum.Font.GothamBold
 toggleBtn.TextSize = 22
 toggleBtn.Text = "X"
@@ -50,8 +59,11 @@ UiPanels.Register("shop", function(v)
 end, true)
 -- Layar sempit (<700px): mulai terlipat agar gameplay terlihat.
 local camS = workspace.CurrentCamera
-if camS and camS.ViewportSize.X < 700 then
-	UiPanels.SetVisible("shop", false)
+if camS then
+	camS:GetPropertyChangedSignal("ViewportSize"):Connect(fitShop)
+	if camS.ViewportSize.X < 700 then
+		UiPanels.SetVisible("shop", false)
+	end
 end
 gui.Destroying:Connect(function()
 	UiPanels.Unregister("shop")

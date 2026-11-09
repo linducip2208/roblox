@@ -12,7 +12,7 @@ local function prevDayKey(): string
 end
 
 function DailyReward.CanClaim(profile): boolean
-	return profile.lastDailyYday ~= dayKey()
+	return (profile.lastDailyYday or "") ~= dayKey()
 end
 
 function DailyReward.Claim(profile): (boolean, number)
@@ -24,7 +24,7 @@ function DailyReward.Claim(profile): (boolean, number)
 		streak = 1
 	end
 	-- reset jika hari terakhir bukan kemarin (skip sehari)
-	if profile.lastDailyYday ~= "" and profile.lastDailyYday ~= prevDayKey() then
+	if (profile.lastDailyYday or "") ~= prevDayKey() then
 		streak = 1
 	end
 	profile.dailyStreak = streak

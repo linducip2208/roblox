@@ -29,6 +29,74 @@ UiTheme.Rarity = {
 UiTheme.CornerRadius = 8
 UiTheme.StrokeColor = Color3.fromRGB(0x3A, 0x55, 0x86)
 
+-- Status semantik (dipetakan ke palet resmi, tanpa warna baru).
+UiTheme.Status = {
+	Error = UiTheme.Rarity.Mythic,
+	Ok = UiTheme.Rarity.Uncommon,
+	Info = UiTheme.Dim,
+}
+
+-- Lebar viewport saat ini (aman di server: fallback 1024).
+function UiTheme.ViewportWidth(): number
+	local ok, cam = pcall(function()
+		return workspace.CurrentCamera
+	end)
+	if ok and cam then
+		local okSize, vs = pcall(function()
+			return cam.ViewportSize
+		end)
+		if okSize and typeof(vs) == "Vector2" then
+			return vs.X
+		end
+	end
+	return 1024
+end
+
+-- Tinggi viewport saat ini (aman di server: fallback 768).
+function UiTheme.ViewportHeight(): number
+	local ok, cam = pcall(function()
+		return workspace.CurrentCamera
+	end)
+	if ok and cam then
+		local okSize, vs = pcall(function()
+			return cam.ViewportSize
+		end)
+		if okSize and typeof(vs) == "Vector2" then
+			return vs.Y
+		end
+	end
+	return 768
+end
+
+-- Jepit panel offset-based agar tidak jebol di layar 320px:
+-- baseW/baseH = ukuran ideal desktop, marginX/marginY = ruang aman tepi.
+function UiTheme.FitPanel(frame: GuiObject, baseW: number, baseH: number, marginX: number?, marginY: number?)
+	local mx = marginX or 32
+	local my = marginY or 120
+	local w = math.min(baseW, math.max(240, UiTheme.ViewportWidth() - mx))
+	local h = math.min(baseH, math.max(200, UiTheme.ViewportHeight() - my))
+	frame.Size = UDim2.new(0, math.floor(w), 0, math.floor(h))
+end
+
+-- Samakan tampilan scroll di semua panel (tipis, warna tema, vertikal saja).
+function UiTheme.MakeScrollable(frame: ScrollingFrame)
+	frame.ScrollingDirection = Enum.ScrollingDirection.Y
+	frame.ScrollBarThickness = 4
+	frame.ScrollBarImageColor3 = UiTheme.Dim
+	frame.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
+end
+
+-- Warna status pesan (error/ok/info) konsisten tanpa hardcode di Client.
+function UiTheme.StyleStatus(label: TextLabel, kind: string?)
+	if kind == "error" then
+		label.TextColor3 = UiTheme.Status.Error
+	elseif kind == "ok" then
+		label.TextColor3 = UiTheme.Status.Ok
+	else
+		label.TextColor3 = UiTheme.Text
+	end
+end
+
 local function corner(parent: Instance, radius: number?)
 	local c = Instance.new("UICorner")
 	c.CornerRadius = UDim.new(0, radius or UiTheme.CornerRadius)

@@ -204,6 +204,121 @@ for fname in ("ShopUI.client.luau", "TreasureUI.client.luau", "InventoryUI.clien
 check("ui-responsive-constraints", not no_constraint,
       f"tanpa constraint: {no_constraint}" if no_constraint else "3 panel punya batas ukuran")
 
+# 14b. REGRESI Master 7: perilaku bermakna, bukan sekadar "string ada".
+# Setiap cek menguji SEMANTIK (urutan, perbandingan, cakupan) agar regresi ketahuan.
+steal_src = luas.get("Server/StealSystem.luau", "")
+money_src = luas.get("Server/MoneyService.luau", "")
+plot_src = luas.get("Server/PlotManager.luau", "")
+treasure_src = luas.get("Server/TreasureService.luau", "")
+gp_src = luas.get("Server/GamepassHandler.luau", "")
+
+# 14b-1. Semua handler RemoteFunction ber-argumen memvalidasi tipe tiap paramnya.
+main_lines = main_src.splitlines()
+handlers: dict = {}
+for i, ln in enumerate(main_lines):
+    m = re.match(r"function (\w+)\.OnServerInvoke\(([^)]*)\)", ln)
+    if m:
+        params = [p.strip().split(":")[0].strip() for p in m.group(2).split(",") if p.strip()]
+        handlers[m.group(1)] = (i, [p for p in params[1:] if p not in ("_", "_player")])
+bad_handlers = []
+n_params = 0
+for h, (i, extra) in handlers.items():
+    n_params += len(extra)
+    window = "\n".join(main_lines[i + 1:i + 31])
+    missing_p = [p for p in extra if f"type({p})" not in window]
+    if missing_p:
+        bad_handlers.append(f"{h}:{','.join(missing_p)}")
+check("remote-arg-guards", not bad_handlers,
+      f"tanpa guard: {bad_handlers}" if bad_handlers else f"{len(handlers)} handler, {n_params} param terjaga")
+
+# 14b-2. Jawaban difloor + rentang 1..4 (tolak float liar, 0, negatif, raksasa).
+check("remote-choice-range", "math.floor(choiceIdx)" in main_src
+      and "choiceIdx < 1" in main_src and "choiceIdx > 4" in main_src, "floor + 1..4")
+
+# 14b-3. Anti curi-sendiri di server (bukan cuma andalkan client).
+check("steal-no-self", "thief == victim" in steal_src, "CanSteal tolak self")
+
+# 14b-4. uid manual wajib milik victim + grown; jalur otomatis hanya pilih grown.
+check("steal-uid-ownership", "slot.uid == targetUid" in main_src
+      and "nothing_grown" in main_src and main_src.count("IsGrown") >= 3, "ownership + grown dicek")
+
+# 14b-5. Commit steal atomik: SETELAH channel sukses, cek slot+grown ulang saat commit,
+# kembalikan slot asli bila gagal (cegah duplikat/overwrite).
+_commit_tail = main_src[main_src.find("StealChannelTime"):]
+check("steal-commit-atomic", "StealChannelTime" in main_src
+      and "FindFreeSlot(profile)" in _commit_tail and "IsGrown(stolen)" in _commit_tail
+      and "vProfile.slots[slotKey] = stolen" in _commit_tail, "recheck saat commit + restore")
+
+# 14b-6. Uang anti-negatif/NaN/inf + cap dua lapis (per-tick dan per-add).
+check("money-antineg", "finite(rawAmount)" in money_src and "rawAmount < 0" in money_src
+      and "amount <= 0" in money_src and "b < amount" in money_src
+      and "hardCap" in money_src and "MaxCashPerTick" in plot_src and "MaxCashPerTick" in money_src,
+      "tolak negatif/NaN + clamp")
+
+# 14b-7. Fencing: token GUID digenerate + disimpan + dibandingkan saat klaim.
+check("fencing-token-gen", "GenerateGUID" in save_src
+      and "sessionToken[uid] = token" in save_src and "res.token == token" in save_src,
+      "klaim hanya menang bila token cocok")
+
+# 14b-8. Fencing: verify + commit bandingkan TOKEN (bukan cuma JobId), tolak bila exp lewat
+# atau generasi basi (tulis sesama sesi sendiri tetap diizinkan).
+check("fencing-verify-strict", "cur.token == mine" in save_src
+      and "(cur.exp or 0) > now()" in save_src
+      and "rs.token == mySession.token" in save_src
+      and "oldS.token == mySession.token" in save_src
+      and "token = sessionToken[player.UserId]" in save_src
+      and "oldGen ~= myGen" in save_src, "job+token+generasi, bukan JobId saja")
+
+# 14b-9. Fencing: release + heartbeat hanya sentuh lock MILIK SENDIRI, mismatch = kick.
+check("fencing-release-own", "old.token == mine" in save_src
+      and "return nil -- hapus hanya milik sendiri" in save_src
+      and 'p:Kick("Sesi dipindahkan' in save_src, "no-op bila milik orang")
+
+# 14b-10. Receipt idempoten: dedupe SEBELUM grant, unmark bila save gagal.
+_dedupe_i = gp_src.find("receipts[purchaseId] ~= nil")
+_grant_i = gp_src.find("GrantLuck(player, 15)")
+_save_i = gp_src.find("SaveSystem.Save(player)")
+_unmark_i = gp_src.find("profile.receipts[purchaseId] = nil")
+check("receipt-idempotent", 0 <= _dedupe_i < _grant_i and _save_i >= 0 < _unmark_i
+      and _unmark_i > _save_i, "dedupe->grant->save->unmark")
+
+# 14b-11. Treasure: urutan wajib + cooldown + lockout 5x gagal.
+check("treasure-order-lockout", "bukan_urutan" in treasure_src
+      and "GetNextUnsolved" in treasure_src and "lastAttempt[uid]" in treasure_src
+      and "lockedUntil" in treasure_src and "MaxFails" in treasure_src, "sequence + anti-bruteforce")
+
+# 14b-12. PublicRiddle TIDAK bocorkan jawaban/reward (Zone = nil, tanpa correct/cash).
+_pub = re.search(r"function TreasureService\.PublicRiddle\(profile\)(.*?)\nend", treasure_src, re.S)
+_pub_body = _pub.group(1) if _pub else ""
+check("treasure-no-leak-public", bool(_pub) and "Zone = nil" in _pub_body
+      and not re.search(r"correct|Answer|RewardCash|RewardKey", _pub_body), "respons publik steril")
+
+# 14b-13. Profil diclamp saat load: cash 0..1e15, slot vs Items.ById, mutasi fallback, NaN/inf.
+check("save-clamp-profile", "0, 1e15" in save_src
+      and "Items.ById[slot.itemId] == nil" in save_src and 'slot.mutation = "Normal"' in save_src
+      and "v ~= v" in save_src and "math.huge" in save_src, "load tak pernah percaya data cloud")
+
+# 14b-14. Offlinegrowth dicap 8 jam DAN 50% syarat rebirth (anti kaya instan).
+check("offline-cap", "OfflineGrowthCap" in save_src
+      and "OfflineMaxPctOfRebirth" in save_src and "if earned > cap" in save_src, "dua cap aktif")
+
+# 14b-15. Semua file Client pembuat UI wajib lewat UiTheme (tanpa kecuali).
+no_theme = []
+for name, t in luas.items():
+    if name.startswith("Client/") and re.search(r'Instance\.new\("(ScreenGui|Text\w+|Frame)"', t):
+        if "UiTheme" not in t:
+            no_theme.append(name)
+check("ui-theme-required", not no_theme, f"liar: {no_theme}" if no_theme else "semua panel via UiTheme")
+
+# 14b-16. Client tak pernah sentuh DataStore (server-authoritative penuh).
+ds_touch = [name for name, t in client_src.items()
+            if re.search(r"DataStoreService|MemoryStoreService|GetAsync|SetAsync|UpdateAsync", t)]
+check("client-no-datastore", not ds_touch, f"sentuh DS: {ds_touch}" if ds_touch else "ekonomi hanya server")
+
+# 14b-17. Cap income dua lapis: TickIncome (PlotManager) + Add (MoneyService).
+check("income-cap-config", "MaxCashPerTick" in plot_src and "MaxCashPerTick" in money_src,
+      "tick cap + add hardcap")
+
 # 15. Gerbang Selene + StyLua (lewati jika biner tidak ada di mesin ini)
 
 

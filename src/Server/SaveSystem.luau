@@ -1,6 +1,10 @@
--- SaveSystem.luau -- load/save + migrasi skema + session lock + envelope aman
+-- SaveSystem.luau -- load/save + migrasi skema + session lock + fencing generation + envelope aman
 -- Kebijakan: FAIL-CLOSED. Tanpa lock sesi yang pasti, pemain tidak boleh main.
 -- Tanpa load sukses, tidak ada save (tidak pernah timpa data dengan default).
+-- FENCING: setiap sesi mengakuisisi generation monotonik via DataStore UpdateAsync
+-- atomik SEBELUM load. Transform save menolak generation basi & identitas sesi basi
+-- SECARA ATOMIK di dalam callback. MemoryStore hanya lapis lease tambahan, BUKAN
+-- satu-satunya sumber kebenaran otorisasi tulis durable (lihat DATASTORE_FINAL_DESIGN.md).
 local DataStoreService = game:GetService("DataStoreService")
 local MemoryStoreService = game:GetService("MemoryStoreService")
 local Players = game:GetService("Players")
@@ -26,6 +30,7 @@ local SaveSystem = {}
 local cache: { [number]: any } = {}
 local loadedOk: { [number]: boolean } = {}
 local sessionToken: { [number]: string } = {}
+local sessionGen: { [number]: number } = {}
 local savedOnLeave: { [number]: boolean } = {}
 
 local function now(): number
@@ -87,6 +92,9 @@ local function ValidateProfile(d: any)
 		local count = 0
 		for _ in d.receipts do
 			count += 1
+			if count > 200 then
+				break -- cukup tahu melebihi batas, hemat hitung
+			end
 		end
 		if count > 200 then
 			local cutoff = now() - 30 * 86400
@@ -142,18 +150,20 @@ local function totalCps(profile): number
 end
 
 -- ============ SESSION LOCK (atomik, fail-closed + mode ephemeral Studio) ============
--- Akuisisi via UpdateAsync: transform atomik, hanya menang jika kosong/kedaluwarsa/milik sendiri.
--- Pengecualian: Studio unpublished tidak punya MemoryStore/DataStore. Jika dipaksa
--- fail-closed, game TIDAK BISA di-Play-test lokal sama sekali. Maka di Studio saja:
--- beri lock ephemeral (memori saja, tidak pernah sentuh DataStore). Aman karena
+-- Akuisisi via UpdateAsync: transform atomik, hanya menang jika kosong/kedaluwarsa.
+-- JobId SAMA tanpa token yang cocok TIDAK cukup untuk takeover: token baru tidak
+-- membuktikan kepemilikan sesi lama (sesi kedaluwarsa pun harus menunggu exp).
+-- Renew milik sendiri ditangani heartbeat (perbandingan token persis), bukan claim.
+-- Studio SELALU ephemeral (memori saja, tidak pernah sentuh DataStore) agar data uji
+-- lokal tidak pernah menulis profil palsu ke produksi. Aman karena
 -- RunService:IsStudio() tidak bisa dipalsukan exploiter di server produksi.
 function SaveSystem.ClaimSession(player: Player): (boolean, string?)
+	if RunService:IsStudio() then
+		warn("[Save] Mode EPHEMERAL (Studio): progres sesi ini saja, tanpa tulis DataStore.")
+		sessionToken[player.UserId] = "STUDIO_EPHEMERAL"
+		return true, nil
+	end
 	if sessionMap == nil then
-		if RunService:IsStudio() then
-			warn("[Save] Mode EPHEMERAL (Studio tanpa MemoryStore): progres sesi ini saja.")
-			sessionToken[player.UserId] = "STUDIO_EPHEMERAL"
-			return true, nil
-		end
 		return false, "lock_unavailable_coba_lagi"
 	end
 	local uid = player.UserId
@@ -168,13 +178,10 @@ function SaveSystem.ClaimSession(player: Player): (boolean, string?)
 				if type(old) ~= "table" then
 					return myLock
 				end
-				if old.job == game.JobId then
-					return myLock -- server sama, ambil alih (restart/shutdown)
-				end
 				if (old.exp or 0) < now() then
-					return myLock -- kedaluwarsa
+					return myLock -- kedaluwarsa (syarat SATU-SATUNYA untuk ambil alih)
 				end
-				return old -- sesi lain masih hidup: TOLAK
+				return old -- sesi lain masih hidup: TOLAK, walau JobId sama
 			end, LOCK_TTL)
 		end)
 		if ok and type(res) == "table" and res.token == token then
@@ -192,6 +199,7 @@ function SaveSystem.ReleaseSession(player: Player)
 	local uid = player.UserId
 	local mine = sessionToken[uid]
 	sessionToken[uid] = nil
+	sessionGen[uid] = nil
 	if sessionMap == nil or mine == nil then
 		return
 	end
@@ -229,6 +237,7 @@ function SaveSystem.DropCache(player: Player)
 	cache[uid] = nil
 	loadedOk[uid] = nil
 	sessionToken[uid] = nil
+	sessionGen[uid] = nil
 	savedOnLeave[uid] = nil
 end
 
@@ -285,19 +294,96 @@ local function classifyError(err: any): string
 	return "unavailable"
 end
 
--- Envelope: {v, session, at, data}. Tolak timpa jika cloud lebih baru dari server lain.
--- Return: data | nil, errKind | nil. errKind = throttled/timeout/api_disabled/unavailable.
-local function readEnvelope(key: string): any
+-- Normalisasi identitas sesi: string lama (hanya JobId) -> tabel {job, token}.
+-- Perbandingan SELALU lewat tabel agar token ikut diverifikasi, bukan cuma JobId.
+function SaveSystem.NormalizeSession(s: any): { job: string?, token: string? }
+	if type(s) == "table" then
+		return { job = s.job, token = s.token }
+	end
+	return { job = if type(s) == "string" then s else nil, token = nil }
+end
+
+-- Envelope: {v, gen, session, at, data}. `gen` = fencing generation monotonik per
+-- profil, naik +1 atomik tiap sesi BARU mengakuisisi (di dalam transform
+-- UpdateAsync). Sesi menyimpan gen miliknya; transform save menolak tulisan dengan
+-- gen basi / identitas sesi basi SECARA ATOMIK, sehingga TOCTOU VerifyLock lalu
+-- tulis tidak mungkin terjadi: kepemilikan bisa berpindah di antara keduanya, tapi
+-- transform selalu memutuskan berdasarkan nilai cloud TERKINI.
+-- Return: data | nil, errKind | nil. errKind = throttled/timeout/api_disabled/unavailable/corrupt.
+local function newEnvelope(gen: number, session: { job: string?, token: string? }, data: any): any
+	return {
+		v = SCHEMA_VERSION,
+		gen = gen,
+		session = { job = session.job, token = session.token },
+		at = now(),
+		data = data,
+	}
+end
+
+-- Salinan profil tanpa field runtime (tidak disimpan ke DataStore).
+local function stripRuntime(profile): any
+	local copy = {}
+	for k, v in profile do
+		if k ~= "_uid" and k ~= "_baseAt" and k ~= "_baseSession" and k ~= "_baseGen" and k ~= "offlineEarned" then
+			copy[k] = v
+		end
+	end
+	return copy
+end
+
+-- Akuisisi fencing + baca atomik: SATU UpdateAsync yang (a) menaikkan gen untuk sesi
+-- baru, (b) memigrasi legacy v1 mentah, (c) mengembalikan data terkini untuk load.
+-- Callback deterministik & tanpa side-effect eksternal: hanya bangun tabel dari
+-- `old` + argumen. Abort (return nil) = TOLAK tulis: korup/legacy-takdikenal tidak
+-- pernah ditimpa; caller fail-closed (tidak init default setelah load gagal).
+-- Re-fence sesi sendiri idempoten: gen TIDAK naik bila session == milik kita.
+local function fenceAndRead(key: string, mySession: { job: string?, token: string? }): (any, string?)
 	local lastErr: any = nil
 	for attempt = 1, 3 do
 		local ok, res = pcall(function()
-			return store:GetAsync(key)
+			return store:UpdateAsync(key, function(old)
+				if old == nil then
+					-- Pemain baru (key kosong, UpdateAsync sukses): init default + gen 1.
+					return newEnvelope(1, mySession, stripRuntime(defaultProfile()))
+				end
+				if type(old) ~= "table" then
+					return nil -- korup: ABORT, jangan timpa
+				end
+				if old.data ~= nil then
+					local oldS = SaveSystem.NormalizeSession(old.session)
+					if oldS.job == mySession.job and oldS.token == mySession.token then
+						return old -- re-fence sendiri: idempoten
+					end
+					local data = ValidateProfile(old.data)
+					if data == nil then
+						return nil -- korup: ABORT
+					end
+					local gen = if type(old.gen) == "number" then old.gen else 0
+					old.gen = gen + 1
+					old.session = { job = mySession.job, token = mySession.token }
+					old.at = now()
+					old.v = SCHEMA_VERSION
+					return old
+				end
+				if old.cash ~= nil or old.slots ~= nil then
+					-- Migrasi legacy v1 mentah -> envelope bergen, atomik.
+					local data = ValidateProfile(old)
+					if data == nil then
+						return nil -- ABORT
+					end
+					return newEnvelope(1, mySession, stripRuntime(data))
+				end
+				return nil -- envelope tak dikenal (kemungkinan korup): ABORT
+			end)
 		end)
 		if ok then
+			if res == nil then
+				return nil, "corrupt"
+			end
 			return res, nil
 		end
 		lastErr = res
-		warn(("[Save] Load:GetAsync gagal (%s) percobaan %d"):format(classifyError(res), attempt))
+		warn(("[Save] Fence:UpdateAsync gagal (%s) percobaan %d"):format(classifyError(res), attempt))
 		backoff(attempt)
 	end
 	return nil, classifyError(lastErr)
@@ -312,48 +398,48 @@ function SaveSystem.Load(player: Player)
 		loadedOk[player.UserId] = true
 		return data
 	end
+	local mine = sessionToken[player.UserId]
+	if mine == nil then
+		loadedOk[player.UserId] = false
+		warn("[Save] Load ditolak (tanpa session lock): " .. player.Name)
+		return nil
+	end
+	local mySession = { job = game.JobId, token = mine }
 	local key = PROFILE_KEY_PREFIX .. player.UserId
-	local env, err = readEnvelope(key)
-	if env == nil and err ~= nil then
+	-- Akuisisi generation valid SEBELUM mutasi apa pun; gagal = fail-closed.
+	local env, err = fenceAndRead(key, mySession)
+	if env == nil then
 		local kind = err or "unavailable"
 		loadedOk[player.UserId] = false
 		warn(
-			("[Save] %s BELUM loaded (Load:GetAsync %s). Save dinonaktifkan, TIDAK pakai default."):format(
+			("[Save] %s BELUM loaded (Fence:UpdateAsync %s). Save dinonaktifkan, TIDAK pakai default."):format(
 				player.Name,
 				kind
 			)
 		)
 		return nil
 	end
-	-- Pemain baru = key kosong (GetAsync sukses, nil). Legacy v1 = tabel mentah berisi cash/slots.
-	-- Bentuk lain = korup -> TOLAK (jangan timpa dengan default).
-	local data = nil
-	local baseAt, baseSession = 0, nil
-	if env == nil then
-		data = defaultProfile()
-	elseif type(env) == "table" and env.data ~= nil then
-		data = ValidateProfile(env.data)
-		baseAt = env.at or 0
-		baseSession = SaveSystem.NormalizeSession(env.session) -- string lama atau tabel baru
-		if data == nil then
-			loadedOk[player.UserId] = false
-			warn("[Save] data korup (validasi gagal): " .. player.Name)
-			return nil
-		end
-	elseif type(env) == "table" and (env.cash ~= nil or env.slots ~= nil) then
-		data = ValidateProfile(env) -- migrasi legacy v1 mentah
-		warn("[Save] migrasi profil legacy v1: " .. player.Name)
-	else
+	if type(env.data) ~= "table" then
 		loadedOk[player.UserId] = false
-		warn("[Save] envelope tak dikenal (kemungkinan korup), TOLAK load: " .. player.Name)
+		warn("[Save] envelope tanpa data (kemungkinan korup), TOLAK load: " .. player.Name)
+		return nil
+	end
+	-- Pemain baru = key kosong saat fence (default+gen 1 tertulis atomik).
+	-- Legacy v1 mentah sudah dimigrasi atomik di dalam fence. Korup = fence ABORT.
+	local data = ValidateProfile(env.data)
+	if data == nil then
+		loadedOk[player.UserId] = false
+		warn("[Save] data korup (validasi gagal): " .. player.Name)
 		return nil
 	end
 	if player.Parent == nil then -- disconnect saat load
 		return nil
 	end
-	-- catat basis versi untuk deteksi konflik saat save
-	data._baseAt = baseAt
-	data._baseSession = baseSession
+	-- catat basis versi + fencing untuk deteksi konflik saat save
+	sessionGen[player.UserId] = if type(env.gen) == "number" then env.gen else 0
+	data._baseAt = env.at or 0
+	data._baseSession = SaveSystem.NormalizeSession(env.session) -- string lama atau tabel baru
+	data._baseGen = sessionGen[player.UserId]
 
 	-- Offline growth
 	local last = num(data.lastLogout, now(), 0, now())
@@ -374,23 +460,13 @@ function SaveSystem.Load(player: Player)
 	return data
 end
 
--- Normalisasi identitas sesi: string lama (hanya JobId) -> tabel {job, token}.
--- Perbandingan SELALU lewat tabel agar token ikut diverifikasi, bukan cuma JobId.
-function SaveSystem.NormalizeSession(s: any): { job: string?, token: string? }
-	if type(s) == "table" then
-		return { job = s.job, token = s.token }
-	end
-	return { job = if type(s) == "string" then s else nil, token = nil }
+local function snapshot(profile)
+	return stripRuntime(profile)
 end
 
-local function snapshot(profile)
-	local copy = {}
-	for k, v in profile do
-		if k ~= "_uid" and k ~= "_baseAt" and k ~= "_baseSession" and k ~= "offlineEarned" then
-			copy[k] = v
-		end
-	end
-	return copy
+-- Generasi fencing sesi ini (diagnostik / uji Studio). Nil = belum akuisisi.
+function SaveSystem.GetFencing(player: Player): number?
+	return sessionGen[player.UserId]
 end
 
 function SaveSystem.Save(player: Player): boolean
@@ -409,6 +485,14 @@ function SaveSystem.Save(player: Player): boolean
 	if sessionToken[player.UserId] == "STUDIO_EPHEMERAL" then
 		return true -- sesi lokal Studio: anggap tersimpan (memori), tanpa tulis DataStore
 	end
+	local myGen = sessionGen[player.UserId]
+	if myGen == nil then
+		warn("[Save] skip save (tanpa fencing generation): " .. player.Name)
+		return false
+	end
+	-- Fast-fail cepat saja; OTORISASI FINAL ada di transform UpdateAsync di bawah.
+	-- Kepemilikan bisa berpindah antara cek ini dan tulis, jadi hasil VerifyLock
+	-- tidak pernah dijadikan dasar keputusan tulis durable.
 	local lockOk, lockErr = SaveSystem.VerifyLock(player)
 	if not lockOk then
 		warn(("[Save] skip save (lock %s): %s"):format(tostring(lockErr), player.Name))
@@ -421,33 +505,59 @@ function SaveSystem.Save(player: Player): boolean
 	end
 	local snap = snapshot(ValidateProfile(d) or d)
 	local mySession = { job = game.JobId, token = sessionToken[player.UserId] }
-	local myJob = game.JobId
 	local baseAt = d._baseAt or 0
 	local baseSession = SaveSystem.NormalizeSession(d._baseSession)
 	local key = PROFILE_KEY_PREFIX .. player.UserId
 	for attempt = 1, 3 do
 		local ok, res = pcall(function()
 			return store:UpdateAsync(key, function(old)
-				if type(old) == "table" and old.at ~= nil and old.data ~= nil then
-					local oldS = SaveSystem.NormalizeSession(old.session)
-					-- cloud lebih baru DAN dari job lain DAN bukan basis kita -> JANGAN timpa.
-					-- Bandingkan job + token (bukan JobId saja).
-					if old.at > baseAt and oldS.job ~= myJob and oldS.job ~= baseSession.job then
-						return old
-					end
+				-- Penolakan ATOMIK berdasarkan nilai cloud TERKINI (bukan hasil
+				-- VerifyLock yang bisa basi): (a) generation basi, (b) identitas
+				-- sesi basi (job+token LENGKAP, bukan JobId saja), (c) cloud lebih
+				-- baru dari basis sesi asing. Tulis sesama sesi sendiri selalu
+				-- diizinkan (autosave + leave-save konkuren aman).
+				if old == nil then
+					return nil -- ABORT: profil lenyap setelah fence, fail-closed
 				end
-				return { v = SCHEMA_VERSION, session = mySession, at = now(), data = snap }
+				if type(old) ~= "table" or type(old.data) ~= "table" then
+					return nil -- ABORT: legacy mentah/korup tidak ditimpa via save
+				end
+				local oldGen = if type(old.gen) == "number" then old.gen else 0
+				local oldS = SaveSystem.NormalizeSession(old.session)
+				local sameAsMe = oldS.job == mySession.job and oldS.token == mySession.token
+				local sameAsBase = baseSession.token ~= nil
+					and oldS.job == baseSession.job
+					and oldS.token == baseSession.token
+				if oldGen ~= myGen then
+					return old -- (a) fencing: generasi kita basi -> TOLAK
+				end
+				if not sameAsMe then
+					return old -- (b) sesi pemegang gen ini bukan kita -> TOLAK
+				end
+				if (old.at or 0) > baseAt and not sameAsBase then
+					return old -- (c) cloud lebih baru dari sesi asing -> TOLAK
+				end
+				old.data = snap
+				old.at = now()
+				old.v = SCHEMA_VERSION
+				return old
 			end)
 		end)
-		if ok and type(res) == "table" then
+		if ok then
+			if type(res) ~= "table" or type(res.data) ~= "table" then
+				warn("[Save] tulis dibatalkan (keadaan tak terduga), skip save: " .. player.Name)
+				return false
+			end
 			local rs = SaveSystem.NormalizeSession(res.session)
-			if rs.job == myJob and rs.token == mySession.token then
+			local resGen = if type(res.gen) == "number" then res.gen else -1
+			if resGen == myGen and rs.job == mySession.job and rs.token == mySession.token then
 				d._baseAt = res.at
 				d._baseSession = res.session
+				d._baseGen = resGen
+				baseAt = res.at
+				baseSession = rs
 				return true
 			end
-		end
-		if ok then
 			warn("[Save] konflik versi, skip save: " .. player.Name)
 			return false
 		end
@@ -457,12 +567,14 @@ function SaveSystem.Save(player: Player): boolean
 	return false
 end
 
--- autosave stagger: jeda antar pemain agar tidak spike
+-- autosave stagger: jeda antar pemain agar tidak spike; lewati yang sudah leave-save
 task.spawn(function()
 	while true do
 		task.wait(Config.AutosaveInterval)
 		for _, p in Players:GetPlayers() do
-			SaveSystem.Save(p)
+			if not savedOnLeave[p.UserId] then
+				SaveSystem.Save(p)
+			end
 			task.wait(0.5)
 		end
 	end

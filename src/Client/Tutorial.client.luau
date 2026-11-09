@@ -18,7 +18,8 @@ gui.Parent = player:WaitForChild("PlayerGui")
 local label = Instance.new("TextLabel")
 label.Size = UDim2.new(0.9, 0, 0, 80)
 label.AnchorPoint = Vector2.new(0.5, 1)
-label.Position = UDim2.new(0.5, 0, 1, -100)
+label.Position = UDim2.new(0.5, 0, 1, -72)
+label.AutomaticSize = Enum.AutomaticSize.Y
 label.Font = Enum.Font.GothamBold
 label.TextSize = 16
 label.TextWrapped = true
@@ -29,6 +30,11 @@ label.TextColor3 = UiTheme.Text
 label.Text = "1. Buka SHOP kanan -> beli Cabai 2. Tunggu tumbuh 3. Kunci base"
 label.Parent = gui
 UiTheme.Corner(label, 8)
+UiTheme.Padding(label, 10)
+local labelCap = Instance.new("UISizeConstraint")
+labelCap.MinSize = Vector2.new(240, 60)
+labelCap.MaxSize = Vector2.new(560, 200)
+labelCap.Parent = label
 
 UpdateHud.OnClientEvent:Connect(function(d)
 	if done then

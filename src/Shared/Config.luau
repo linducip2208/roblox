@@ -27,12 +27,14 @@ local Config = {
 	MaxCashPerTick = 10_000_000, -- sanity cap anti-inject
 
 	Gamepasses = {
-		DoubleMoney = 0, -- 299 R$
-		VIP = 0, -- 375 R$
+		-- Isi dari dashboard (Create > Gamepasses). 0 = NONAKTIF aman (tombol "segera hadir").
+		DoubleMoney = 0, -- target 299 R$
+		VIP = 0, -- target 375 R$
 	},
 	Products = {
-		LuckBoost15m = 0, -- 99 R$
-		UnlockInstant = 0, -- 49 R$
+		-- Isi dari dashboard (Create > Developer Products). 0 = NONAKTIF aman.
+		LuckBoost15m = 0, -- target 99 R$
+		UnlockInstant = 0, -- target 49 R$
 	},
 
 	Event = {
