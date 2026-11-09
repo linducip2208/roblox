@@ -2,7 +2,7 @@
 
 Genre: Simulation idle + Steal (ala Grow a Garden x Steal a Brainrot)
 Target: monetisasi serius, update mingguan Sabtu
-Status: **31 modul Luau, 0 TODO, Selene 0/0, StyLua PASS, `rojo build` sukses, `tools/verify.py` 20/21**
+Status: **31 modul Luau, 0 TODO, Selene 0/0, StyLua PASS, `rojo build` sukses, `tools/verify.py` 27 PASS / 0 FAIL / 2 BLOCKED / 6 NOT TESTED**
 
 ## Quick Start (Drive D:)
 1. Install Roblox Studio ke D: — `PowerShell -ExecutionPolicy Bypass -File tools/install-studio-D.ps1` (as Admin)
@@ -12,7 +12,7 @@ Status: **31 modul Luau, 0 TODO, Selene 0/0, StyLua PASS, `rojo build` sukses, `
 
 ## Cek mutu (dari folder `roblox/`, tanpa Studio)
 ```powershell
-python tools/verify.py        # 15 cek: remote, skema, jawaban, ID, aset
+python tools/verify.py        # 29 cek: remote, skema, jawaban, ID, aset, UI, Selene, StyLua
 & tools/selene/selene.exe src # harus 0 error 0 warning (selene.toml)
 & tools/stylua/stylua.exe --check src  # harus bersih (stylua.toml)
 & tools/rojo/rojo.exe build default.project.json -o game.rbxlx
