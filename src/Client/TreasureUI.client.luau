@@ -75,7 +75,7 @@ layout.Padding = UDim.new(0, 6)
 local qLabel = Instance.new("TextLabel")
 qLabel.Size = UDim2.new(1, 0, 0, 90)
 qLabel.Font = Enum.Font.GothamBold
-qLabel.TextSize = 17
+qLabel.TextSize = UiThemeT.FontSize.Button
 qLabel.TextWrapped = true
 qLabel.TextTruncate = Enum.TextTruncate.AtEnd
 qLabel.Text = "Memuat teka-teki..."
@@ -87,7 +87,7 @@ for i = 1, 4 do
 	local b = Instance.new("TextButton")
 	b.Size = UDim2.new(1, 0, 0, 44)
 	b.Font = Enum.Font.GothamBold
-	b.TextSize = 15
+	b.TextSize = UiThemeT.FontSize.Body
 	b.TextWrapped = true
 	b.TextTruncate = Enum.TextTruncate.AtEnd
 	b.Text = "..."
@@ -115,16 +115,16 @@ end
 local hintLabel = Instance.new("TextLabel")
 hintLabel.Size = UDim2.new(1, 0, 0, 60)
 hintLabel.Font = Enum.Font.GothamBold
-hintLabel.TextSize = 15
+hintLabel.TextSize = UiThemeT.FontSize.Body
 hintLabel.TextWrapped = true
 hintLabel.Text = ""
 hintLabel.Parent = frame
 UiThemeT.Label(hintLabel)
 
 local hintBtn = Instance.new("TextButton")
-hintBtn.Size = UDim2.new(1, 0, 0, 40)
+hintBtn.Size = UDim2.new(1, 0, 0, 44)
 hintBtn.Font = Enum.Font.GothamBold
-hintBtn.TextSize = 17
+hintBtn.TextSize = UiThemeT.FontSize.Button
 hintBtn.TextTruncate = Enum.TextTruncate.AtEnd
 hintBtn.Text = "💡 Minta Hint (gratis/cooldown)"
 hintBtn.Parent = frame
@@ -142,16 +142,16 @@ UiIconsT.Attach(hintBtn, "ui-key")
 local compassLabel = Instance.new("TextLabel")
 compassLabel.Size = UDim2.new(1, 0, 0, 36)
 compassLabel.Font = Enum.Font.GothamBold
-compassLabel.TextSize = 15
+compassLabel.TextSize = UiThemeT.FontSize.Body
 compassLabel.TextTruncate = Enum.TextTruncate.AtEnd
 compassLabel.Text = "Kompas: -"
 compassLabel.Parent = frame
 UiThemeT.Label(compassLabel)
 
 local compassBtn = Instance.new("TextButton")
-compassBtn.Size = UDim2.new(1, 0, 0, 40)
+compassBtn.Size = UDim2.new(1, 0, 0, 44)
 compassBtn.Font = Enum.Font.GothamBold
-compassBtn.TextSize = 17
+compassBtn.TextSize = UiThemeT.FontSize.Button
 compassBtn.TextTruncate = Enum.TextTruncate.AtEnd
 compassBtn.Text = "🧭 Cek Kompas"
 compassBtn.Parent = frame
@@ -166,12 +166,12 @@ UiIconsT.Attach(compassBtn, "ui-compass")
 local digBtn = Instance.new("TextButton")
 digBtn.Size = UDim2.new(1, 0, 0, 48)
 digBtn.Font = Enum.Font.GothamBold
-digBtn.TextSize = 18
+digBtn.TextSize = UiThemeT.FontSize.Section
 digBtn.TextTruncate = Enum.TextTruncate.AtEnd
 digBtn.Text = "⛏️ GALI DI SINI"
 digBtn.Parent = frame
 UiThemeT.Button(digBtn, UiThemeT.Gold)
-digBtn.TextColor3 = UiThemeT.DarkText
+digBtn.TextColor3 = UiThemeT.OnColor(UiThemeT.Gold)
 UiThemeT.Hover(digBtn)
 digBtn.MouseButton1Click:Connect(function()
 	local ok, res = RequestDig:InvokeServer()
@@ -186,9 +186,9 @@ digBtn.MouseButton1Click:Connect(function()
 end)
 
 local toolBtn = Instance.new("TextButton")
-toolBtn.Size = UDim2.new(1, 0, 0, 40)
+toolBtn.Size = UDim2.new(1, 0, 0, 44)
 toolBtn.Font = Enum.Font.GothamBold
-toolBtn.TextSize = 16
+toolBtn.TextSize = UiThemeT.FontSize.Sub
 toolBtn.TextTruncate = Enum.TextTruncate.AtEnd
 toolBtn.Text = "🛠️ Beli Sekop (5rb) / Kompas (3rb)"
 toolBtn.Parent = frame

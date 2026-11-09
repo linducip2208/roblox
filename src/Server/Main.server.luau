@@ -247,7 +247,7 @@ function RequestSteal.OnServerInvoke(thief: Player, victimUserId: number, uid: s
 	if victimUserId == thief.UserId then
 		return false, "self"
 	end
-	if uid ~= nil and (type(uid) ~= "string" or #uid > 64) then
+	if uid ~= nil and (type(uid) ~= "string" or #uid > 64 or (#uid > 0 and uid:match("^[%w%-]+$") == nil)) then
 		return false, "invalid"
 	end
 	local victim = Players:GetPlayerByUserId(victimUserId)
@@ -358,7 +358,12 @@ task.spawn(function()
 							local ok, reason = StealSystem.CanSteal(p, victim)
 							if not ok and reason ~= "cooldown" then
 								-- gagal kecuali cooldown (cooldown dicek di akhir)
-								if reason == "locked" or reason == "toofar" or reason == "safezone" then
+								if
+									reason == "locked"
+									or reason == "toofar"
+									or reason == "safezone"
+									or reason == "nochar"
+								then
 									StealSystem.ClearChannel(p)
 									UpdateHud:FireClient(p, { type = "steal_fail", reason = reason })
 								end
@@ -545,7 +550,9 @@ function RequestStock.OnServerInvoke(_player: Player)
 	if not checkRate(_player, "RequestStock") then
 		return { stock = {}, secs = 0 }
 	end
-	return { stock = ShopRotation.Stock, secs = ShopRotation.TimeLeft() }
+	-- salinan dangkal: jangan ekspos referensi tabel stok internal (kontrak sama)
+	local snap = table.clone(ShopRotation.Stock)
+	return { stock = snap, secs = ShopRotation.TimeLeft() }
 end
 
 function RequestRiddle.OnServerInvoke(player: Player)
@@ -571,6 +578,10 @@ function SubmitAnswer.OnServerInvoke(player: Player, riddleId: string, choiceIdx
 		return false, "input_invalid"
 	end
 	if type(choiceIdx) ~= "number" or choiceIdx ~= choiceIdx then
+		return false, "input_invalid"
+	end
+	-- tolak float probing (2.7, 2.0 kiriman mentah): hanya bulat 1..4 yang sah
+	if choiceIdx % 1 ~= 0 then
 		return false, "input_invalid"
 	end
 	choiceIdx = math.floor(choiceIdx)
@@ -602,12 +613,23 @@ function RequestHint.OnServerInvoke(player: Player, riddleId: string)
 	if type(riddleId) ~= "string" or #riddleId > 16 or riddleId:match("^[%w_]+$") == nil then
 		return false, "input_invalid"
 	end
+	-- hint hanya untuk teka-teki aktif (urutan wajib): cegah intip hint riddle depan
+	local nextR = TreasureService.GetNextUnsolved(profile)
+	if not nextR or nextR.Id ~= riddleId then
+		return false, "bukan_urutan"
+	end
+	-- snapshot kuota: bila Spend gagal (balapan), kuota dikembalikan agar tak hangus
+	local usedBefore = profile.treasure.hintsUsed[riddleId] or 0
+	local lastHintBefore = profile.treasure.lastHintAt
 	local ok, hint, cost = TreasureService.RequestHint(profile, riddleId, MoneyService.Get(player))
 	if not ok then
 		return false, hint
 	end
 	if cost > 0 then
 		if not MoneyService.Spend(player, cost) then
+			profile.treasure.hintsUsed[riddleId] = usedBefore
+			profile.treasure.lastHintAt = lastHintBefore
+			SaveSystem.Save(player)
 			return false, "koin_kurang"
 		end
 		profile.cash = MoneyService.Get(player)
@@ -650,7 +672,7 @@ function BuyTool.OnServerInvoke(player: Player, tool: string)
 	if not checkRate(player, "BuyTool") then
 		return false, "terlalu_cepat"
 	end
-	if type(tool) ~= "string" or #tool > 16 then
+	if type(tool) ~= "string" or #tool > 16 or tool:match("^[%w_]+$") == nil then
 		return false, "tool_invalid"
 	end
 	local profile = SaveSystem.Get(player)
@@ -759,7 +781,7 @@ Players.PlayerAdded:Connect(function(p)
 	MoneyService.InitPlayer(p, profile)
 	MoneyService.RefreshMultiplier(p, profile)
 	Leaderboard.Attach(p, profile)
-	StealSystem.LockBase(p, 0, false) -- spawn protection 60s
+	StealSystem.LockBase(p, profile.rebirths or 0, isVip(p)) -- spawn protection (rebirth+VIP dihitung)
 	assignPlot(p)
 	-- kirim offline popup + stok shop
 	task.defer(function()

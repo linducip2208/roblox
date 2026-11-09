@@ -1,13 +1,14 @@
-# RELEASE READINESS (8 Nov 2026)
+# RELEASE READINESS (9 Nov 2026 — verify aktual 52/0/2/6 pasca-integrasi)
 
 ## Gate teknis (mesin) — LULUS SEMUA
-- [x] Rojo build PASS
-- [x] Rojo build PASS, Selene 0/0, StyLua PASS, verify 44 PASS / 0 FAIL / 2 BLOCKED (ID+admin owner)
-- [x] Tidak ada critical/high bug kode yang diketahui
-- [x] Tidak ada data-loss path yang diketahui (fail-closed + envelope + backup validasi)
-- [x] Session lock + receipt idempoten terimplementasi (belum uji live)
-- [x] Seluruh remote tervalidasi + rate-limited
-- [x] 34 aset terverifikasi file-nya (BELUM diupload)
+- [x] `python tools/verify.py`: **52 PASS / 0 FAIL / 2 BLOCKED / 6 NOT TESTED**
+  (BLOCKED = `product-ids`, `admin-configured` — tindakan owner; NOT TESTED = 6 uji Studio).
+- [x] Selene 0 error 0 warning, StyLua bersih, 0 TODO, `rojo build` sukses, 31 modul / 16 remote.
+- [x] Tidak ada critical/high bug kode yang diketahui (semua klaim fungsional = PARTIAL sampai Studio).
+- [x] Tidak ada data-loss path yang diketahui (fail-closed + envelope + verifikasi lock + clamp load).
+- [x] Session lock + receipt idempoten terimplementasi (belum uji live).
+- [x] Seluruh remote tervalidasi + rate-limited (14 remote fungsi dilindungi).
+- [x] 34 aset terverifikasi file-nya (BELUM diupload — semua UPLOAD_PENDING).
 
 ## Gate manusia/owner — TERBUKA (blocker rilis)
 - [ ] Studio: Play solo OK (khususnya spawn tidak jatuh, map lengkap, UI rapi)

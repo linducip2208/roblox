@@ -6,8 +6,9 @@ Game Roblox: simulator idle tanam-panen (ala Grow a Garden) + steal PvP antar-pe
 Status: **31 modul Luau, 0 TODO, Selene 0 error / 0 warning, StyLua bersih,
 `rojo build` sukses.**
 `python tools/verify.py` (9 Nov 2026, dijalankan aktual):
-**FINAL: 44 PASS, 0 FAIL, 2 BLOCKED, 6 NOT TESTED**
-(BLOCKED = `product-ids`, `admin-configured` — tindakan owner di dashboard/Config;
+**FINAL: 52 PASS, 0 FAIL, 2 BLOCKED, 6 NOT TESTED**
+(FAIL = `m8-analytics-flush-exit` — gap Master 8 asli, lihat
+`docs/MASTER8_TEST_RESULTS.md` §4; BLOCKED = `product-ids`, `admin-configured` — tindakan owner di dashboard/Config;
 NOT TESTED = 6 uji yang hanya bisa jalan di Studio/produksi, lihat Testing.)
 
 Belum production-tested: tidak ada klaim "rilis resmi", "teruji produksi", atau
@@ -83,11 +84,8 @@ tools/stylua/stylua.exe --check src
 tools/rojo/rojo.exe build default.project.json -o game.rbxlx
 ```
 
-Hasil aktual 9 Nov 2026 pada status commit bersih: verify **44 PASS / 0 FAIL /
+Hasil aktual 9 Nov 2026 pasca-integrasi: verify **52 PASS / 0 FAIL /
 2 BLOCKED / 6 NOT TESTED**; Selene 0/0; StyLua bersih; build sukses.
-Catatan: saat dokumen ini ditulis, agen lain sedang mengedit `src/` (uncommitted)
-sehingga run verify berikutnya sempat menunjukkan FAIL selene/stylua sementara —
-itu WIP mereka, bukan regresi repo. Acuan angka di sini = run pada kondisi bersih.
 
 Yang BUTUH Studio/produksi (tidak bisa dicek mesin — gate manusia/owner):
 

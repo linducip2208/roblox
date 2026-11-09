@@ -21,6 +21,8 @@
 - Ganti thumbnail + announcement di Community
 - Pantau: Like ratio >85%, D1 >15%, Session >10 mnt. Jika drop, nerf harga Secret.
 
-## 5. Scale
-- 1K CCU: tambah Trade Plaza, anti-scam trade ticket
-- 10K CCU: pindah DataStore ke ProfileService + MemoryStore lock
+## 5. Scale (SETELAH beta terbukti — bukan janji rilis)
+- Syarat naik CCU: Sesi 1–6 `docs/STUDIO_QA_RUNBOOK.md` lolos + like >85% + sesi >10 mnt.
+- 1K CCU: uji 8-pemain penuh dulu, tambah Trade Plaza bila sesak (belum didesain).
+- 10K CCU: profil ulang DataStore/MemoryStore aktual (SUDAH MemoryStore lock — bukan migrasi baru).
+- DILARANG: iklan berbayar / klaim "rilis resmi" sebelum semua gate beta lolos.

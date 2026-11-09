@@ -21,7 +21,7 @@ cashLabel.AnchorPoint = Vector2.new(0, 0)
 cashLabel.Size = UDim2.new(0, 300, 0, 44)
 cashLabel.Position = UDim2.new(0, 16, 0, 16)
 cashLabel.Font = Enum.Font.GothamBold
-cashLabel.TextSize = 22
+cashLabel.TextSize = UiTheme.FontSize.Hud
 cashLabel.TextTruncate = Enum.TextTruncate.AtEnd
 cashLabel.TextXAlignment = Enum.TextXAlignment.Left
 cashLabel.Text = "Rp 0"
@@ -40,7 +40,7 @@ local infoLabel = Instance.new("TextLabel")
 infoLabel.Size = UDim2.new(0, 300, 0, 26)
 infoLabel.Position = UDim2.new(0, 16, 0, 64)
 infoLabel.Font = Enum.Font.Gotham
-infoLabel.TextSize = 15
+infoLabel.TextSize = UiTheme.FontSize.Body
 infoLabel.TextTruncate = Enum.TextTruncate.AtEnd
 infoLabel.TextXAlignment = Enum.TextXAlignment.Left
 infoLabel.Text = ""
@@ -52,12 +52,12 @@ infoCap.MinSize = Vector2.new(180, 26)
 infoCap.MaxSize = Vector2.new(300, 26)
 infoCap.Parent = infoLabel
 
--- Bar navigasi kanan-bawah: sentuh >= 44px, tidak menutup tengah layar.
--- Anchor kanan-bawah + fit viewport agar tidak overflow di 320px.
+-- Bar navigasi bawah-tengah: di atas zona tombol HP (lompat kiri/kanan),
+-- tidak menutup tengah layar, sentuh >= 44px, fit viewport 320px.
 local nav = Instance.new("Frame")
-nav.AnchorPoint = Vector2.new(1, 1)
+nav.AnchorPoint = Vector2.new(0.5, 1)
 nav.Size = UDim2.new(0, 300, 0, 48)
-nav.Position = UDim2.new(1, -12, 1, -12)
+nav.Position = UDim2.new(0.5, 0, 1, -12)
 nav.BackgroundTransparency = 1
 nav.Parent = gui
 local navCap = Instance.new("UISizeConstraint")
@@ -74,7 +74,7 @@ local function navBtn(text: string, target: string)
 	local b = Instance.new("TextButton")
 	b.Size = UDim2.new(0, 94, 0, 44)
 	b.Font = Enum.Font.GothamBold
-	b.TextSize = 16
+	b.TextSize = UiTheme.FontSize.Sub
 	b.TextTruncate = Enum.TextTruncate.AtEnd
 	b.Text = text
 	b.Parent = nav
@@ -112,11 +112,28 @@ if camHud then
 end
 
 local lastCash = 0
+local lastPulseAt = 0
+local lastTickText = ""
+local transientUntil = 0
+local function showTransient(text: string, kind: string?)
+	infoLabel.Text = text
+	UiTheme.StyleStatus(infoLabel, kind)
+	transientUntil = os.clock() + 4
+	task.delay(4, function()
+		if os.clock() >= transientUntil and infoLabel and infoLabel.Parent then
+			infoLabel.Text = lastTickText
+			UiTheme.StyleStatus(infoLabel, nil)
+		end
+	end)
+end
 UpdateHud.OnClientEvent:Connect(function(data)
 	if data.type == "tick" then
 		local income = tonumber(data.income) or 0
 		local cash = tonumber(data.cash) or 0
-		if cash > lastCash and lastCash > 0 then
+		-- Pulse tiap tick naik = identitas "uang mengalir"; debounce 0.5s
+		-- agar burst tick (lag/rejoin) tak menumpuk tween.
+		if cash > lastCash and lastCash > 0 and os.clock() - lastPulseAt >= 0.5 then
+			lastPulseAt = os.clock()
 			-- pulse ringan saat uang bertambah (relatif ke ukuran responsif)
 			local base = cashLabel.Size
 			TweenService:Create(cashLabel, TweenInfo.new(0.12), { Size = base + UDim2.new(0, 12, 0, 2) }):Play()
@@ -129,18 +146,22 @@ UpdateHud.OnClientEvent:Connect(function(data)
 		lastCash = cash
 		cashLabel.Text = "Rp " .. tostring(data.cash)
 		local lock = data.locked and "[KUNCI]" or "[BUKA]"
-		infoLabel.Text = ("+%d/dtk  x%d  %s  Lv%d"):format(income, data.mult or 1, lock, data.level or 1)
+		lastTickText = ("+%d/dtk  x%d  %s  Lv%d"):format(income, data.mult or 1, lock, data.level or 1)
+		if os.clock() >= transientUntil then
+			infoLabel.Text = lastTickText
+			UiTheme.StyleStatus(infoLabel, nil)
+		end
 	elseif data.type == "welcome" then
 		if data.offline and data.offline > 0 then
-			infoLabel.Text = ("Offline +Rp %d"):format(data.offline)
+			showTransient(("Offline +Rp %d"):format(data.offline), "ok")
 		end
 	elseif data.type == "steal_ok" then
-		infoLabel.Text = "Berhasil curi: " .. tostring(data.itemId)
+		showTransient("Berhasil curi: " .. tostring(data.itemId), "ok")
 	elseif data.type == "stolen" then
-		infoLabel.Text = ("Kecurian! %s oleh %s"):format(tostring(data.itemId), tostring(data.by))
+		showTransient(("Kecurian! %s oleh %s"):format(tostring(data.itemId), tostring(data.by)), "error")
 	elseif data.type == "steal_fail" then
-		infoLabel.Text = "Gagal curi: " .. tostring(data.reason)
+		showTransient("Gagal curi: " .. tostring(data.reason), "error")
 	elseif data.type == "treasure_found" then
-		infoLabel.Text = ("Harta %s ditemukan! Lv%d"):format(tostring(data.riddleId), tonumber(data.level) or 1)
+		showTransient(("Harta %s ditemukan! Lv%d"):format(tostring(data.riddleId), tonumber(data.level) or 1), "ok")
 	end
 end)

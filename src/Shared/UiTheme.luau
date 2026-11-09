@@ -36,6 +36,36 @@ UiTheme.Status = {
 	Info = UiTheme.Dim,
 }
 
+-- Skala tipografi resmi: Title 20 / Section 18 / Button 17 / Sub 16 / Body 15 / Small 14.
+UiTheme.FontSize = {
+	Hud = 22,
+	Title = 20,
+	Section = 18,
+	Button = 17,
+	Sub = 16,
+	Body = 15,
+	Small = 14,
+}
+
+-- Spacing resmi + tinggi sentuh minimum mobile (44px).
+UiTheme.Spacing = { XS = 4, S = 6, M = 8, L = 12 }
+UiTheme.MinTouch = 44
+
+-- Paksa tinggi sentuh minimum tanpa mengubah lebar (mobile ≥44px).
+function UiTheme.Touch(b: GuiButton)
+	local s = b.Size
+	b.Size = UDim2.new(s.X.Scale, s.X.Offset, 0, math.max(s.Y.Offset, UiTheme.MinTouch))
+end
+
+-- Warna teks kontras di atas latar tombol (emas/legendaris -> teks gelap).
+function UiTheme.OnColor(bg: Color3): Color3
+	local lum = 0.299 * bg.R + 0.587 * bg.G + 0.114 * bg.B
+	if lum > 0.6 then
+		return UiTheme.DarkText
+	end
+	return UiTheme.Text
+end
+
 -- Lebar viewport saat ini (aman di server: fallback 1024).
 function UiTheme.ViewportWidth(): number
 	local ok, cam = pcall(function()

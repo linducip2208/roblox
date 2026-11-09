@@ -165,7 +165,7 @@ class Daily:
 class RiddleTrail:
     """Mirror TreasureService.SubmitAnswer: urutan wajib, sekali solve,
     lockout 60 dtk setelah 5 gagal."""
-    ORDER = ["R1", "R2", "R3"]
+    ORDER = ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10"]
     MAX_FAILS = 5
     def __init__(self):
         self.solved, self.fails, self.locked = {}, {}, {}
@@ -203,6 +203,91 @@ def offline_earned(grown_cps, mult, elapsed_s, req):
     elapsed = min(max(elapsed_s, 0), OFFLINE_CAP_H * 3600)
     earned = math.floor(elapsed * grown_cps * mult)
     return min(earned, math.floor(req * OFFLINE_MAX_PCT))
+
+# ---------- Tambahan Master 8 (mirror Config.Events / DailyReward / RedeemCode /
+# ---------- TreasureConfig / StealSystem-lock-timing; model otoritatif, bukan data live) ----------
+EVENTS = {"hujan": {"mult": 2, "hint_free": False},   # Hujan Kopi
+          "golden": {"mult": 3, "hint_free": False},  # Golden Harvest
+          "rush": {"mult": 2, "hint_free": True},     # Treasure Rush (hint gratis)
+          "meteor": {"mult": 4, "hint_free": False}}  # Meteor Shower
+DAILY_FULL = [500, 1500, 4000, 10000, 25000, 60000, 150000]  # mirror DailyReward.REWARDS
+REDEEM_CODES = {"RILIS100K": 100000, "HUJANKOPI": 50000, "GACOR2026": 250000}  # total 400rb
+RIDDLE_SOLVE_TOTAL = 5000 + 8000 + 12000 + 15000 + 20000 + 25000 + 30000 + 40000 + 60000 + 100000
+RIDDLE_DIG_TOTAL = RIDDLE_SOLVE_TOTAL  # bonus gali = RewardCash yg sama per riddle
+MUT_EV_RAINBOW_SHARE = 0.05 * 10  # kontribusi Rainbow ke EV 2.25
+
+def plant_mutation(roll):
+    """Mirror PlotManager.Plant: ambang dari Config.MutationRate (70/15/10/5)."""
+    if roll > 95:
+        return "Rainbow"
+    if roll > 85:
+        return "Dark"
+    if roll > 70:
+        return "Gold"
+    return "Normal"
+
+class EventState:
+    """Mirror EventManager: satu event aktif; Start ganda diabaikan (anti spam admin)."""
+    def __init__(self):
+        self.active = None
+    def start(self, key):
+        if self.active is not None:
+            return False
+        if key not in EVENTS:
+            return False
+        self.active = key
+        return True
+    def mult(self):
+        return EVENTS[self.active]["mult"] if self.active else 1
+    def hint_free(self):
+        return bool(self.active and EVENTS[self.active]["hint_free"])
+    def stop(self):
+        self.active = None
+
+class DailyStreak:
+    """Mirror DailyReward.Claim: streak+1 (wrap 7->1), reset 1 bila skip sehari."""
+    def __init__(self):
+        self.last, self.streak = "", 0
+    def claim(self, day_key, prev_day_key):
+        if self.last == day_key:
+            return False, 0
+        s = self.streak + 1
+        if s > 7:
+            s = 1
+        if self.last != prev_day_key:
+            s = 1
+        self.streak, self.last = s, day_key
+        return True, DAILY_FULL[s - 1]
+
+class Redeem3:
+    """Mirror RedeemCode: 3 kode nominal aktual, sekali pakai per pemain."""
+    def __init__(self):
+        self.used = set()
+    def redeem(self, code):
+        c = code.upper().replace(" ", "")
+        if c not in REDEEM_CODES:
+            return False, "kode_salah"
+        if c in self.used:
+            return False, "sudah_dipakai"
+        self.used.add(c)
+        return True, REDEEM_CODES[c]
+
+class StealTiming:
+    """Mirror StealSystem: lock 60 +10/rebirth +10 VIP; cooldown 5 dtk pasca-sukses."""
+    def __init__(self):
+        self.lock_until, self.cd_until = {}, {}
+    def lock_base(self, uid, rebirths=0, vip=False, t=0):
+        self.lock_until[uid] = t + 60 + rebirths * 10 + (10 if vip else 0)
+    def can_steal(self, thief, victim, t=0):
+        if thief == victim:
+            return False, "self"
+        if self.lock_until.get(victim, -1) > t:
+            return False, "locked"
+        if self.cd_until.get(thief, -1) > t:
+            return False, "cooldown"
+        return True, "ok"
+    def set_cooldown(self, thief, t=0):
+        self.cd_until[thief] = t + 5
 
 def run_exploit_tests():
     T = []
@@ -276,6 +361,85 @@ def run_exploit_tests():
     k = [1]
     check("kunci_negatif_ditolak", spend_keys(k, -5) is False and k[0] == 1)
     check("kunci_ganda_ditolak", spend_keys(k, 1) is True and spend_keys(k, 1) is False)
+
+    # --- Paket event x2/x3/x4 (mirror Config.Events; Start ganda = no-op) ---
+    ev = EventState()
+    check("event_hujan_x2", ev.start("hujan") is True and ev.mult() == 2)
+    check("event_tidak_stack", ev.start("golden") is False and ev.mult() == 2)
+    ev.stop()
+    check("event_golden_x3", ev.start("golden") is True and ev.mult() == 3)
+    ev.stop()
+    check("event_meteor_x4", ev.start("meteor") is True and ev.mult() == 4)
+    ev.stop()
+    check("event_rush_x2_hint_gratis",
+          ev.start("rush") is True and ev.mult() == 2 and ev.hint_free() is True)
+    ev.stop()
+    check("event_mati_mult_1", ev.mult() == 1 and ev.hint_free() is False)
+
+    # --- Streak 7 hari penuh (mirror DailyReward.REWARDS) ---
+    ds = DailyStreak()
+    tot = 0
+    for d in range(1, 8):
+        ok, amt = ds.claim(f"D{d}", f"D{d-1}")
+        tot += amt if ok else 0
+    check("daily_streak_7_penuh_251rb", tot == 251000)
+    ok, amt = ds.claim("D8", "D7")
+    check("daily_wrap_hari8_kembali_1", ok is True and amt == 500)
+    check("daily_h8_ganda_ditolak", ds.claim("D8", "D7") == (False, 0))
+    ds2 = DailyStreak()
+    ds2.claim("D1", "D0")
+    check("daily_skip_reset_1", ds2.claim("D3", "D2") == (True, 500))
+
+    # --- Redeem 3 kode + reuse (nominal aktual Server/RedeemCode.luau) ---
+    r3 = Redeem3()
+    tot3 = 0
+    for c in ("RILIS100K", "HUJANKOPI", "GACOR2026"):
+        ok, amt = r3.redeem(c)
+        tot3 += amt if ok else 0
+    check("redeem_3kode_total_400rb", tot3 == 400000)
+    check("redeem_reuse_ditolak", r3.redeem("rilis100k") == (False, "sudah_dipakai")
+          and r3.redeem("HUJAN KOPI") == (False, "sudah_dipakai"))
+
+    # --- 10 riddle: urutan penuh + total reward solve+gali 630rb ---
+    rt10 = RiddleTrail()
+    ok_all = True
+    for r in ("R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10"):
+        ok, _ = rt10.submit(r, True)
+        ok_all = ok_all and ok
+    check("riddle_10_urutan_lolos", ok_all is True)
+    check("riddle_10_total_630rb",
+          RIDDLE_SOLVE_TOTAL == 315000 and RIDDLE_SOLVE_TOTAL + RIDDLE_DIG_TOTAL == 630000)
+
+    # --- Mutasi: EV 2.25 + porsi Rainbow + batas roll (mirror Plant/MutationRate) ---
+    check("mutasi_ev_225", abs(MUT_EV - 2.25) < 1e-9)
+    check("mutasi_rainbow_ev_05", abs(MUT_EV_RAINBOW_SHARE - 0.5) < 1e-9)
+    check("mutasi_batas_roll", plant_mutation(70) == "Normal" and plant_mutation(71) == "Gold"
+          and plant_mutation(85) == "Gold" and plant_mutation(86) == "Dark"
+          and plant_mutation(95) == "Dark" and plant_mutation(96) == "Rainbow")
+
+    # --- Steal-vs-lock timing (mirror StealSystem.LockBase + cooldown 5 dtk) ---
+    st = StealTiming()
+    st.lock_base("V", 0, False, 0)
+    check("steal_vs_lock_ditolak", st.can_steal("A", "V", 59) == (False, "locked"))
+    check("steal_lepas_lock_ok", st.can_steal("A", "V", 60) == (True, "ok"))
+    st.lock_base("W", 2, True, 0)  # 60 + 2*10 + 10 = 90
+    check("steal_lock_rebirth_vip_90d", st.can_steal("A", "W", 89) == (False, "locked")
+          and st.can_steal("A", "W", 90) == (True, "ok"))
+    st.set_cooldown("A", 100)
+    check("steal_cooldown_5d", st.can_steal("A", "V", 104) == (False, "cooldown")
+          and st.can_steal("A", "V", 105) == (True, "ok"))
+
+    # --- Rebirth 5x: syarat linear + cap multiplier x10 ---
+    check("rebirth_5x_syarat_linear",
+          [REQ(r) for r in range(5)] == [1_000_000, 2_000_000, 3_000_000, 4_000_000, 5_000_000])
+    check("rebirth_mult_cap_10", min(1 + 5, 10) == 6 and min(1 + 9, 10) == 10)
+
+    # --- Profil sultan: cap tick 10jt + hard cap 100jt tetap menahan ---
+    sultan_raw = min(8 * 450000 * 10, 10_000_000)  # 8x Sirsak Rainbow -> dicap/tick
+    check("sultan_tick_dicap_10jt", sultan_raw == 10_000_000)
+    sa = Acct(0, 10.0)
+    econ_add(sa, sultan_raw * 4)  # event meteor x4 -> 40jt x mult10 = 400jt -> clamp
+    check("sultan_hardcap_100jt", sa.cash == 100_000_000)
     return T
 
 def main():

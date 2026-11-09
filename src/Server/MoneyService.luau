@@ -13,6 +13,12 @@ local function baseMultiplier(profile): number
 	return math.min(m, Config.MaxRebirthMultiplier)
 end
 
+-- Sumber tunggal rumus multiplier rebirth (dipakai Init/Refresh + kalkulasi
+-- offline di SaveSystem agar tak ada duplikasi rumus yang bisa divergen).
+function MoneyService.BaseMultiplier(profile): number
+	return baseMultiplier(profile)
+end
+
 function MoneyService.InitPlayer(player: Player, profile)
 	balances[player.UserId] = profile.cash
 	multipliers[player.UserId] = baseMultiplier(profile)

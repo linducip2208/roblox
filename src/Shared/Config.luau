@@ -28,6 +28,7 @@ local Config = {
 
 	Gamepasses = {
 		-- Isi dari dashboard (Create > Gamepasses). 0 = NONAKTIF aman (tombol "segera hadir").
+		-- VIP tanpa receipt: efek dibaca live via UserOwnsGamePassAsync tiap LockBase.
 		DoubleMoney = 0, -- target 299 R$
 		VIP = 0, -- target 375 R$
 	},
@@ -38,9 +39,10 @@ local Config = {
 	},
 
 	Event = {
-		Name = "Hujan Kopi",
-		DurationMinutes = 30,
-		IncomeMultiplier = 2, -- x2 saat event
+		-- Saklar auto-start Sabtu 19:00 WIB. Detail event (nama/durasi/multiplier)
+		-- HANYA dari katalog Events + DefaultEvent di bawah (kunci lama Name/
+		-- DurationMinutes/IncomeMultiplier di tabel ini sudah dihapus 9 Nov 2026
+		-- karena mati dan menyesatkan bila di-tuning).
 		AutoSaturday19WIB = true, -- Sabtu 19:00 WIB (12:00 UTC)
 	},
 

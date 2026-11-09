@@ -3,7 +3,7 @@
 ## Terbuka (butuh Studio/owner)
 1. Play test 1/2/8 pemain belum jalan: semua klaim fungsional = PARTIAL, bukan PASS.
 2. Visual HP/tablet + overlap + keterbacaan: NOT TESTED, butuh screenshot device.
-3. Upload 34 gambar + 105 kunci AssetMap masih kosong (UPLOAD_PENDING semua).
+3. Upload 34 gambar + 104 kunci AssetMap masih kosong (UPLOAD_PENDING semua).
 4. 4 ID produk + AdminUserIds = 0 (monetisasi nonaktif by design).
 5. Uji 2-server session lock + shutdown sungguhan + DataStore produksi: NOT TESTED.
 6. SafeZone cek `FindFirstChild(SafeZoneName, true)` — jika nama diganti di MapBuilder,

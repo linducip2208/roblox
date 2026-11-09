@@ -56,11 +56,14 @@ function GamepassHandler.OnProductBought(player: Player, productId: number, purc
 		return false -- pemain belum loaded: NotProcessedYet agar dicoba lagi
 	end
 	profile.receipts = profile.receipts or {}
-	if purchaseId and profile.receipts[purchaseId] ~= nil then
-		return true -- sudah diberi sebelumnya (termasuk retry setelah restart)
+	-- PurchaseId kosong = tanpa kunci idempotensi: tolak agar Roblox retry
+	-- dengan receipt lengkap, bukan grant buta yang bisa dobel saat retry.
+	if purchaseId == nil or purchaseId == "" then
+		warn(("[Shop] PurchaseId kosong %d (%s), tunda"):format(productId, player.Name))
+		return false
 	end
-	if purchaseId == nil then
-		warn(("[Shop] PurchaseId kosong %d (%s)"):format(productId, player.Name))
+	if profile.receipts[purchaseId] ~= nil then
+		return true -- sudah diberi sebelumnya (termasuk retry setelah restart)
 	end
 	if productId == luckId then
 		GamepassHandler.GrantLuck(player, 15)
@@ -68,17 +71,13 @@ function GamepassHandler.OnProductBought(player: Player, productId: number, purc
 		local StealSystem = require(script.Parent:WaitForChild("StealSystem"))
 		StealSystem.Unlock(player)
 	end
-	if purchaseId then
-		profile.receipts[purchaseId] = os.time()
-	end
+	profile.receipts[purchaseId] = os.time()
 	-- Granted HANYA jika persistensi benar-benar commit.
 	if SaveSystem.Save(player) then
 		return true
 	end
 	-- Save gagal: cabut tanda receipt agar retry grant ulang, bukan false-ack.
-	if purchaseId then
-		profile.receipts[purchaseId] = nil
-	end
+	profile.receipts[purchaseId] = nil
 	return false
 end
 
@@ -92,7 +91,12 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passI
 	if not wasBought then
 		return
 	end
-	if passId ~= Config.Gamepasses.DoubleMoney then
+	local doubleId = Config.Gamepasses.DoubleMoney
+	-- Slot nonaktif (0): abaikan sebelum panggil API (id 0 tidak valid).
+	if doubleId == 0 then
+		return
+	end
+	if passId ~= doubleId then
 		return
 	end
 	local ok, owns = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, passId)

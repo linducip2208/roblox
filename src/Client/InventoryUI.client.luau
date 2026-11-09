@@ -72,7 +72,7 @@ layout.Padding = UDim.new(0, 5)
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
 title.Font = Enum.Font.GothamBold
-title.TextSize = 20
+title.TextSize = UiTheme.FontSize.Title
 title.TextTruncate = Enum.TextTruncate.AtEnd
 title.Text = "Profil"
 title.Parent = frame
@@ -101,7 +101,7 @@ local function statRow(key: string, assetKey: string, placeholder: string)
 	tl.Position = UDim2.new(0, 34, 0, 0)
 	tl.BackgroundTransparency = 1
 	tl.Font = Enum.Font.GothamBold
-	tl.TextSize = 15
+	tl.TextSize = UiTheme.FontSize.Body
 	tl.TextTruncate = Enum.TextTruncate.AtEnd
 	tl.TextXAlignment = Enum.TextXAlignment.Left
 	tl.Text = placeholder
@@ -110,9 +110,9 @@ local function statRow(key: string, assetKey: string, placeholder: string)
 	rows[key] = tl
 end
 
-statRow("treasure", "ui-chest", "Harta ...")
-statRow("tools", "ui-shovel", "Alat ...")
-statRow("luck", "ui-coin", "Uang ...")
+statRow("treasure", "ui-chest", "Memuat profil...")
+statRow("tools", "ui-shovel", "Memuat profil...")
+statRow("luck", "ui-coin", "Memuat profil...")
 
 -- ID produk diambil dari server (0 = tampil "segera hadir", aman, tidak hardcode).
 local ids = { gpDouble = 0, gpVip = 0, pLuck = 0, pUnlock = 0 }
@@ -137,6 +137,12 @@ local function refresh()
 			d.rebirths or 0,
 			(d.luck and "AKTIF" or "-")
 		)
+		for _, r in rows do
+			UiTheme.StyleStatus(r, nil)
+		end
+	else
+		rows.treasure.Text = "Gagal muat profil (coba lagi)"
+		UiTheme.StyleStatus(rows.treasure, "error")
 	end
 end
 
@@ -145,9 +151,9 @@ end
 -- Tombol baca ID dari server saat diklik (0 = "segera hadir", tidak hardcode).
 local function idBtn(text: string, key: string, isProduct: boolean)
 	local b = Instance.new("TextButton")
-	b.Size = UDim2.new(1, 0, 0, 40)
+	b.Size = UDim2.new(1, 0, 0, 44)
 	b.Font = Enum.Font.GothamBold
-	b.TextSize = 17
+	b.TextSize = UiTheme.FontSize.Button
 	b.TextTruncate = Enum.TextTruncate.AtEnd
 	b.Text = text .. " (...)"
 	b.Parent = frame
@@ -190,9 +196,9 @@ task.spawn(function()
 end)
 
 local muteBtn = Instance.new("TextButton")
-muteBtn.Size = UDim2.new(1, 0, 0, 40)
+muteBtn.Size = UDim2.new(1, 0, 0, 44)
 muteBtn.Font = Enum.Font.GothamBold
-muteBtn.TextSize = 17
+muteBtn.TextSize = UiTheme.FontSize.Button
 muteBtn.TextTruncate = Enum.TextTruncate.AtEnd
 muteBtn.Text = "🔊 Suara: ON"
 muteBtn.Parent = frame

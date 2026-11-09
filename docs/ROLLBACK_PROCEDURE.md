@@ -71,5 +71,5 @@ dari kondisi darurat tanpa menandai versinya.
 ## 6. Setelah insiden
 
 - Tulis tanggal, penyebab, komit rollback, dan `SaveKey` aktif ke `docs/UPDATE_NOTES.md`.
-- Pastikan `python tools/verify.py` hijau lagi (27 PASS acuan) sebelum klaim pulih.
+- Pastikan `python tools/verify.py` hijau lagi (44 PASS acuan) sebelum klaim pulih.
 - Jangan klaim "sudah aman permanen" — catat sisa risiko di `docs/KNOWN_ISSUES.md`.

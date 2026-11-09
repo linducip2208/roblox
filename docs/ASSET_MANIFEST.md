@@ -23,4 +23,11 @@ Dilarang menulis `UPLOADED` tanpa Asset ID valid. Lihat rincian per file + kolom
 - Mutasi/varian tambahan: pakai tint kode + img2img bila perlu, bukan 92 upload.
 
 ## Verifikasi terakhir
-`python tools/comfyui/validate_assets.py` → 34/34 OK, manifest==disk.
+`python tools/comfyui/validate_assets.py` → 34/34 OK, manifest==disk (9 Nov 2026).
+Independen PIL: 34/34 terbuka, resolusi sesuai manifest, tidak ada duplikat/blank/korup
+(240KB–1,7MB/file). Anomali non-blocker: plants full-bleed RGB tanpa alpha
+(dokumen lama klaim "bg putih") — Decal di Part bola tetap tampil penuh.
+
+## Klasifikasi + langkah owner
+P0/P1/P2 + langkah upload berurutan + estimasi: lihat `docs/ASSET_INVENTORY.md` §E–§F
+dan tabel mapping `docs/ROBLOX_ASSET_UPLOAD.md`. Belum ada upload: 104/104 kunci kosong.

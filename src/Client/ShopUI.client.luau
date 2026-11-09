@@ -77,7 +77,7 @@ local header = Instance.new("TextLabel")
 header.Size = UDim2.new(1, 0, 0, 30)
 header.Text = "SHOP (restock 5 mnt)"
 header.Font = Enum.Font.GothamBold
-header.TextSize = 20
+header.TextSize = UiTheme.FontSize.Title
 header.TextTruncate = Enum.TextTruncate.AtEnd
 header.Parent = frame
 UiTheme.Title(header)
@@ -86,7 +86,7 @@ local eventLabel = Instance.new("TextLabel")
 eventLabel.Size = UDim2.new(1, 0, 0, 26)
 eventLabel.Text = "Event: -"
 eventLabel.Font = Enum.Font.Gotham
-eventLabel.TextSize = 14
+eventLabel.TextSize = UiTheme.FontSize.Small
 eventLabel.TextTruncate = Enum.TextTruncate.AtEnd
 eventLabel.Parent = frame
 UiTheme.Label(eventLabel)
@@ -96,7 +96,7 @@ local lockBtn = Instance.new("TextButton")
 lockBtn.Size = UDim2.new(1, 0, 0, 44)
 lockBtn.Text = "Kunci Base (60s)"
 lockBtn.Font = Enum.Font.GothamBold
-lockBtn.TextSize = 18
+lockBtn.TextSize = UiTheme.FontSize.Section
 lockBtn.TextTruncate = Enum.TextTruncate.AtEnd
 lockBtn.Parent = frame
 lockBtn.MouseButton1Click:Connect(function()
@@ -110,7 +110,7 @@ local rbBtn = Instance.new("TextButton")
 rbBtn.Size = UDim2.new(1, 0, 0, 44)
 rbBtn.Text = "Rebirth (1jt)"
 rbBtn.Font = Enum.Font.GothamBold
-rbBtn.TextSize = 18
+rbBtn.TextSize = UiTheme.FontSize.Section
 rbBtn.TextTruncate = Enum.TextTruncate.AtEnd
 rbBtn.Parent = frame
 rbBtn.MouseButton1Click:Connect(function()
@@ -123,14 +123,14 @@ rbBtn.MouseButton1Click:Connect(function()
 end)
 UiTheme.Button(rbBtn, UiTheme.Gold)
 UiTheme.Hover(rbBtn)
-rbBtn.TextColor3 = UiTheme.DarkText
+rbBtn.TextColor3 = UiTheme.OnColor(UiTheme.Gold)
 UiIcons.Attach(rbBtn, "ui-trophy")
 
 local dailyBtn = Instance.new("TextButton")
 dailyBtn.Size = UDim2.new(1, 0, 0, 44)
 dailyBtn.Text = "Daily Reward"
 dailyBtn.Font = Enum.Font.GothamBold
-dailyBtn.TextSize = 18
+dailyBtn.TextSize = UiTheme.FontSize.Section
 dailyBtn.TextTruncate = Enum.TextTruncate.AtEnd
 dailyBtn.Parent = frame
 dailyBtn.MouseButton1Click:Connect(function()
@@ -146,7 +146,7 @@ local redeemBox = Instance.new("TextBox")
 redeemBox.Size = UDim2.new(1, 0, 0, 44)
 redeemBox.PlaceholderText = "Kode redeem..."
 redeemBox.Font = Enum.Font.Gotham
-redeemBox.TextSize = 16
+redeemBox.TextSize = UiTheme.FontSize.Sub
 redeemBox.TextTruncate = Enum.TextTruncate.AtEnd
 redeemBox.BackgroundColor3 = UiTheme.Input
 redeemBox.TextColor3 = UiTheme.Text
@@ -167,7 +167,7 @@ local RequestStock = remotes:WaitForChild("RequestStock") :: RemoteFunction
 local stockLabel = Instance.new("TextLabel")
 stockLabel.Size = UDim2.new(1, 0, 0, 26)
 stockLabel.Font = Enum.Font.Gotham
-stockLabel.TextSize = 14
+stockLabel.TextSize = UiTheme.FontSize.Small
 stockLabel.TextTruncate = Enum.TextTruncate.AtEnd
 stockLabel.Text = "Stok: ..."
 stockLabel.Parent = frame
@@ -187,12 +187,13 @@ for _, def in Items.List do
 	local b = Instance.new("TextButton")
 	b.Size = UDim2.new(1, 0, 0, 56)
 	b.Font = Enum.Font.GothamBold
-	b.TextSize = 15
+	b.TextSize = UiTheme.FontSize.Body
 	b.TextWrapped = true
 	b.TextTruncate = Enum.TextTruncate.AtEnd
 	b.Text = baseText(def)
 	b.Parent = frame
 	UiTheme.Button(b, UiTheme.Rarity[def.Rarity])
+	b.TextColor3 = UiTheme.OnColor(UiTheme.Rarity[def.Rarity])
 	UiTheme.Hover(b)
 	itemBtns[def.Id] = { btn = b, def = def }
 	b.MouseButton1Click:Connect(function()
@@ -215,6 +216,8 @@ function refreshStock()
 		return RequestStock:InvokeServer()
 	end)
 	if not ok or type(data) ~= "table" then
+		stockLabel.Text = "Stok: gagal muat (coba lagi)"
+		UiTheme.StyleStatus(stockLabel, "error")
 		return
 	end
 	local stock = data.stock or {}
@@ -229,6 +232,7 @@ function refreshStock()
 	end
 	local s = tonumber(data.secs) or 0
 	stockLabel.Text = ("Restock %d:%02d"):format(math.floor(s / 60), s % 60)
+	UiTheme.StyleStatus(stockLabel, nil)
 end
 
 task.spawn(function()

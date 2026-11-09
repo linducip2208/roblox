@@ -31,7 +31,9 @@ function TreasureService.RestoreSpots(uid: number, saved: any?)
 		return
 	end
 	for riddleId, p in saved do
-		if type(p) == "table" and type(p.x) == "number" then
+		-- Validasi penuh: entri korup (y/z bukan angka) wajib dilewat, bukan error
+		-- saat join (PlayerAdded abort = pemain stuck tanpa MoneyService).
+		if type(p) == "table" and type(p.x) == "number" and type(p.y) == "number" and type(p.z) == "number" then
 			u[riddleId] = { pos = Vector3.new(p.x, p.y, p.z), spawnedAt = os.time() }
 		end
 	end

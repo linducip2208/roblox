@@ -14,6 +14,7 @@ local HttpService = game:GetService("HttpService")
 local Config = require(game.ReplicatedStorage.Shared.Config)
 local Items = require(game.ReplicatedStorage.Shared.Items)
 local MoneyService = require(script.Parent.MoneyService)
+local Analytics = require(script.Parent.Analytics)
 
 local SCHEMA_VERSION = 2
 local LOCK_TTL = 300 -- detik; heartbeat tiap 60
@@ -161,6 +162,7 @@ function SaveSystem.ClaimSession(player: Player): (boolean, string?)
 	if RunService:IsStudio() then
 		warn("[Save] Mode EPHEMERAL (Studio): progres sesi ini saja, tanpa tulis DataStore.")
 		sessionToken[player.UserId] = "STUDIO_EPHEMERAL"
+		savedOnLeave[player.UserId] = nil
 		return true, nil
 	end
 	if sessionMap == nil then
@@ -186,11 +188,14 @@ function SaveSystem.ClaimSession(player: Player): (boolean, string?)
 		end)
 		if ok and type(res) == "table" and res.token == token then
 			sessionToken[uid] = token
+			savedOnLeave[uid] = nil -- rejoin server sama: izinkan autosave/leave-save lagi
 			return true, nil
 		elseif ok and type(res) == "table" then
 			return false, "akun dipakai di server lain (tunggu maks 5 mnt)"
 		end
-		backoff(attempt)
+		if attempt < 3 then
+			backoff(attempt)
+		end
 	end
 	return false, "lock_unavailable_coba_lagi"
 end
@@ -200,8 +205,8 @@ function SaveSystem.ReleaseSession(player: Player)
 	local mine = sessionToken[uid]
 	sessionToken[uid] = nil
 	sessionGen[uid] = nil
-	if sessionMap == nil or mine == nil then
-		return
+	if sessionMap == nil or mine == nil or mine == "STUDIO_EPHEMERAL" then
+		return -- ephemeral Studio tidak pernah memegang lock MemoryStore
 	end
 	pcall(function()
 		sessionMap:UpdateAsync(SESSION_KEY_PREFIX .. uid, function(old)
@@ -384,7 +389,9 @@ local function fenceAndRead(key: string, mySession: { job: string?, token: strin
 		end
 		lastErr = res
 		warn(("[Save] Fence:UpdateAsync gagal (%s) percobaan %d"):format(classifyError(res), attempt))
-		backoff(attempt)
+		if attempt < 3 then
+			backoff(attempt)
+		end
 	end
 	return nil, classifyError(lastErr)
 end
@@ -433,6 +440,7 @@ function SaveSystem.Load(player: Player)
 		return nil
 	end
 	if player.Parent == nil then -- disconnect saat load
+		loadedOk[player.UserId] = false
 		return nil
 	end
 	-- catat basis versi + fencing untuk deteksi konflik saat save
@@ -445,7 +453,7 @@ function SaveSystem.Load(player: Player)
 	local last = num(data.lastLogout, now(), 0, now())
 	local elapsed = math.clamp(now() - last, 0, Config.OfflineGrowthCap)
 	local cps = totalCps(data)
-	local mult = math.min(1 + data.rebirths * Config.RebirthMultiplierStep, Config.MaxRebirthMultiplier)
+	local mult = MoneyService.BaseMultiplier(data)
 	local earned = math.floor(elapsed * cps * mult)
 	local cap = math.floor(Config.RebirthRequirementFor(data.rebirths or 0) * Config.OfflineMaxPctOfRebirth)
 	if earned > cap then
@@ -504,6 +512,15 @@ function SaveSystem.Save(player: Player): boolean
 		d.cash = bal
 	end
 	local snap = snapshot(ValidateProfile(d) or d)
+	-- Batas payload DataStore 4MB: tolak sebelum UpdateAsync agar tidak
+	-- membakar budget throttle/retry untuk tulis yang pasti gagal.
+	local payloadOk, payloadJson = pcall(function()
+		return HttpService:JSONEncode(snap)
+	end)
+	if not payloadOk or #payloadJson > 4 * 1024 * 1024 then
+		warn("[Save] skip save (payload terlalu besar): " .. player.Name)
+		return false
+	end
 	local mySession = { job = game.JobId, token = sessionToken[player.UserId] }
 	local baseAt = d._baseAt or 0
 	local baseSession = SaveSystem.NormalizeSession(d._baseSession)
@@ -561,7 +578,9 @@ function SaveSystem.Save(player: Player): boolean
 			warn("[Save] konflik versi, skip save: " .. player.Name)
 			return false
 		end
-		backoff(attempt)
+		if attempt < 3 then
+			backoff(attempt)
+		end
 	end
 	warn("[Save] save gagal 3x: " .. player.Name)
 	return false
@@ -609,6 +628,8 @@ game:BindToClose(function()
 		task.wait(0.5)
 		waited += 0.5
 	end
+	-- kuras antrean analitik sebelum proses mati (tutup window 60 dtk)
+	pcall(Analytics.Flush)
 end)
 
 return SaveSystem

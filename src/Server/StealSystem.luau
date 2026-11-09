@@ -8,6 +8,44 @@ local cooldowns: { [number]: number } = {} -- thiefId -> next allowed time
 local channels: { [number]: any } = {} -- thiefId -> { victimId, uid, startTime, startPos }
 local itemLocks: { [string]: number } = {} -- itemUid -> thiefId (cegah 2 thief 1 item)
 
+-- Cache zona aman: TradePlaza statis pasca-Build (MapBuilder), jadi hasil
+-- FindFirstChild rekursif di-cache; invalidasi via DescendantAdded/Removing.
+-- Perilaku identik bila part belum ada: fallback lookup tiap panggil, return false.
+local safeZonePart: BasePart? = nil
+
+local function lookupZone(): BasePart?
+	-- TradePlaza anak LANGSUNG workspace (MapBuilder:78-82, non-rekursif):
+	-- lookup langsung tanpa scan rekursif, hanya saat cache miss.
+	local z = workspace:FindFirstChild(Config.SafeZoneName)
+	if z and z:IsA("BasePart") then
+		return z
+	end
+	return nil
+end
+
+pcall(function()
+	workspace.DescendantAdded:Connect(function(d)
+		if d.Name == Config.SafeZoneName and d:IsA("BasePart") then
+			safeZonePart = d
+		end
+	end)
+	workspace.DescendantRemoving:Connect(function(d)
+		if d == safeZonePart then
+			safeZonePart = nil
+		end
+	end)
+end)
+
+local function getZone(): BasePart?
+	local z = safeZonePart
+	if z and z.Parent then
+		return z
+	end
+	z = lookupZone()
+	safeZonePart = z
+	return z
+end
+
 local function charPos(player: Player)
 	local c = player.Character
 	local hrp = c and c:FindFirstChild("HumanoidRootPart")
@@ -23,8 +61,8 @@ local function inSafeZone(player: Player): boolean
 	if not hrp then
 		return true
 	end
-	-- jika ada part SafeZone di workspace, cek jarak sederhana
-	local zone = workspace:FindFirstChild(Config.SafeZoneName, true)
+	-- jika ada part SafeZone di workspace, cek jarak sederhana (cache, bukan search rekursif)
+	local zone = getZone()
 	if zone and zone:IsA("BasePart") then
 		return (hrp.Position - zone.Position).Magnitude < (zone.Size.Magnitude / 2)
 	end

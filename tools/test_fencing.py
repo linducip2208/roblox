@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import json
 import sys
 from dataclasses import dataclass, field
 
@@ -109,6 +110,33 @@ class FakeMemoryStore:
 LOCK_TTL = 300
 SCHEMA_VERSION = 2
 STARTING_CASH = 100
+# Cermin batas payload DataStore 4MB (+ guard pre-check di SaveSystem.Save).
+MAX_PAYLOAD_BYTES = 4 * 1024 * 1024
+
+
+def estimate_bytes(obj):
+    """Estimasi ukuran tulis via JSON (cermin HttpService:JSONEncode di Save)."""
+    try:
+        return len(json.dumps(obj, ensure_ascii=False))
+    except (TypeError, ValueError):
+        return MAX_PAYLOAD_BYTES + 1  # tak-serialisasi = tolak tulis
+
+
+def sanitize_legacy(old, now):
+    """Cermin ValidateProfile untuk jalur migrasi v1 mentah: sanitasi, bukan percaya."""
+    data = {}
+    cash = old.get("cash")
+    if isinstance(cash, bool) or not isinstance(cash, (int, float)) \
+            or cash != cash or cash in (float("inf"), float("-inf")):
+        data["cash"] = STARTING_CASH
+    elif cash < 0 or cash > 10**15:
+        data["cash"] = STARTING_CASH
+    else:
+        data["cash"] = cash
+    slots = old.get("slots")
+    data["slots"] = dict(slots) if isinstance(slots, dict) else {}
+    data["lastLogout"] = now
+    return data
 
 
 def normalize_session(s):
@@ -179,6 +207,7 @@ def fence_and_read(ds, uid, my_session, now, cfg):
     """Cermin fenceAndRead: akuisisi gen + baca atomik. Return (env|None, err).
 
     Legacy (fencing=False): tanpa gen, tanpa idempotensi sesi (sekadar baca).
+    Retry 3x seperti Luau (backoff dihilangkan: waktu tak dimodelkan harness).
     """
     key = f"p_{uid}"
 
@@ -206,7 +235,7 @@ def fence_and_read(ds, uid, my_session, now, cfg):
             old["v"] = SCHEMA_VERSION
             return old
         if old.get("cash") is not None or old.get("slots") is not None:
-            data = dict(old)  # migrasi legacy v1 mentah
+            data = sanitize_legacy(old, now)  # migrasi legacy v1 mentah
             return {
                 "v": SCHEMA_VERSION,
                 "gen": 1,
@@ -216,13 +245,17 @@ def fence_and_read(ds, uid, my_session, now, cfg):
             }
         return None
 
-    try:
-        res = ds.update(key, transform)
-    except DataStoreError as exc:
-        return None, str(exc)
-    if res is None:
-        return None, "corrupt"
-    return res, None
+    last_err = None
+    for _ in range(3):
+        try:
+            res = ds.update(key, transform)
+        except DataStoreError as exc:
+            last_err = str(exc)
+            continue
+        if res is None:
+            return None, "corrupt"
+        return res, None
+    return None, (last_err or "unavailable")
 
 
 def save_transform(old, my_session, my_gen, base_at, base_session, snap, now, cfg):
@@ -274,6 +307,8 @@ def save_transform(old, my_session, my_gen, base_at, base_session, snap, now, cf
 def do_save(ds, uid, my_session, my_gen, base_at, base_session, snap, now, cfg,
             attempts=3):
     """Cermin SaveSystem.Save. Return (ok, reason)."""
+    if estimate_bytes(snap) > MAX_PAYLOAD_BYTES:
+        return False, "payload_too_large"  # guard pre-check: tanpa sentuh DataStore
     key = f"p_{uid}"
     last_err = None
     for _ in range(attempts):
@@ -586,6 +621,169 @@ def t_release_safe(cfg):
     require(verify_lock(ms, uid, tok_b, now + 1),
             "release basi TIDAK boleh melepas lock server baru")
     return "release basi tidak merusak lock B"
+
+
+@scenario("payload_raksasa")
+def t_huge_payload(cfg):
+    ds, ms, now, uid = FakeDataStore(), FakeMemoryStore(), 15_000_000, 21
+    ok, tok = claim_session(ms, uid, "job-A", "tok-A", now, cfg)
+    require(ok, "claim harus menang")
+    sess = {"job": "job-A", "token": tok}
+    env, err = fence_and_read(ds, uid, sess, now, cfg)
+    require(env is not None, f"fence gagal: {err}")
+    snap = dict(env["data"])
+    snap["blob"] = "x" * (MAX_PAYLOAD_BYTES + 1)  # >4MB
+    ok_save, reason = do_save(ds, uid, sess, env["gen"], env["at"],
+                              env["session"], snap, now + 1, cfg)
+    require(not ok_save and reason == "payload_too_large",
+            f"tulis raksasa WAJIB DITOLAK pre-check, dapat {reason}")
+    cloud = ds.data[f"p_{uid}"]
+    require("blob" not in cloud["data"], "cloud tidak boleh kemasukan payload raksasa")
+    require(not ds.failures, "penolakan pre-check tidak boleh membakar retry DataStore")
+    snap_ok = dict(env["data"])
+    snap_ok["cash"] = 123
+    ok2, _ = do_save(ds, uid, sess, env["gen"], env["at"], env["session"],
+                     snap_ok, now + 2, cfg)
+    require(ok2, "save normal setelah penolakan harus tetap bisa")
+    return "oversize ditolak pre-check, cloud utuh"
+
+
+@scenario("throttle_beruntun")
+def t_throttle_burst(cfg):
+    ds, ms, now, uid = FakeDataStore(), FakeMemoryStore(), 16_000_000, 22
+    ok, tok = claim_session(ms, uid, "job-A", "tok-A", now, cfg)
+    require(ok, "claim harus menang")
+    sess = {"job": "job-A", "token": tok}
+    ds.failures = [DataStoreError("throttled"), DataStoreError("throttled")]
+    env, err = fence_and_read(ds, uid, sess, now, cfg)
+    require(env is not None, f"fence harus pulih via retry, dapat err={err}")
+    snap = dict(env["data"])
+    snap["cash"] = 2000
+    ds.failures = [DataStoreError("timeout")] * 5  # gagal total semua retry save
+    ok_save, reason = do_save(ds, uid, sess, env["gen"], env["at"],
+                              env["session"], snap, now + 1, cfg)
+    require(not ok_save, f"save saat throttle total harus GAGAL, dapat {reason}")
+    require(ds.data[f"p_{uid}"]["data"]["cash"] != 2000,
+            "cloud tidak boleh termutasi parsial saat throttle")
+    ok2, _ = do_save(ds, uid, sess, env["gen"], ds.data[f"p_{uid}"]["at"],
+                     ds.data[f"p_{uid}"]["session"], snap, now + 2, cfg)
+    require(ok2, "save setelah throttle reda harus komit")
+    return "retry fence pulih; save gagal-total lalu pulih"
+
+
+@scenario("migrasi_v1_korup")
+def t_corrupt_legacy(cfg):
+    ds, ms, now, uid = FakeDataStore(), FakeMemoryStore(), 17_000_000, 23
+    ds.data[f"p_{uid}"] = {"cash": "bukan-angka", "slots": "rusak-juga"}
+    ok, tok = claim_session(ms, uid, "job-A", "tok-A", now, cfg)
+    require(ok, "claim harus menang")
+    env, err = fence_and_read(ds, uid, {"job": "job-A", "token": tok}, now, cfg)
+    require(env is not None, f"migrasi korup harus disanitasi, bukan crash: {err}")
+    require(env["gen"] == 1, "gen migrasi harus 1")
+    require(env["data"]["cash"] == STARTING_CASH, "cash korup harus jadi default aman")
+    require(env["data"]["slots"] == {}, "slots korup harus jadi tabel kosong")
+    ds.data["p_98"] = "sampah-bukan-tabel"
+    env2, err2 = fence_and_read(ds, 98, {"job": "job-A", "token": tok}, now, cfg)
+    require(env2 is None and err2 == "corrupt",
+            "envelope non-tabel WAJIB ABORT (fail-closed, bukan timpa default)")
+    require(ds.data["p_98"] == "sampah-bukan-tabel", "abort tidak boleh menulis apa pun")
+    return "v1 korup disanitasi; non-tabel abort"
+
+
+@scenario("autosave_vs_leave_ketat")
+def t_tight_race(cfg):
+    ds, ms, now, uid = FakeDataStore(), FakeMemoryStore(), 18_000_000, 24
+    ok, tok = claim_session(ms, uid, "job-A", "tok-A", now, cfg)
+    require(ok, "claim harus menang")
+    sess = {"job": "job-A", "token": tok}
+    env, _ = fence_and_read(ds, uid, sess, now, cfg)
+    # Kedua save baca basis SAMA sebelum salah satu komit (race ketat).
+    snap_auto = dict(env["data"])
+    snap_auto["cash"] = 200
+    snap_leave = dict(env["data"])
+    snap_leave["cash"] = 300
+    ok1, _ = do_save(ds, uid, sess, env["gen"], env["at"], env["session"],
+                     snap_auto, now + 1, cfg)
+    ok2, _ = do_save(ds, uid, sess, env["gen"], env["at"], env["session"],
+                     snap_leave, now + 1, cfg)
+    require(ok1 and ok2, "dua save sesama sesi (basis sama) harus SAMA-SAMA lolos")
+    require(ds.data[f"p_{uid}"]["data"]["cash"] == 300, "last-writer-wins sesama sesi")
+    # Penulis basi asing dengan gen lama mencoba masuk SETELAH race: WAJIB kalah.
+    res = ds.update(
+        f"p_{uid}",
+        lambda old: save_transform(old, {"job": "job-X", "token": "tok-X"},
+                                   env["gen"] - 1, now - 50,
+                                   {"job": "job-X", "token": "tok-X"},
+                                   {"cash": 1}, now + 2, cfg),
+    )
+    require(res["data"]["cash"] == 300, "penulis basi asing TIDAK boleh menang")
+    return "race sesama sesi konsisten; stale asing ditolak"
+
+
+@scenario("clock_skew")
+def t_clock_skew(cfg):
+    ds, ms, now, uid = FakeDataStore(), FakeMemoryStore(), 19_000_000, 25
+    ds.data[f"p_{uid}"] = {"v": 2, "gen": 5,
+                           "session": {"job": "job-O", "token": "tok-O"},
+                           "at": now + 7200,  # jam server lama maju (skew masa depan)
+                           "data": {"cash": 4321, "slots": {}}}
+    ok, tok = claim_session(ms, uid, "job-A", "tok-A", now, cfg)
+    require(ok, "claim harus menang")
+    env, err = fence_and_read(ds, uid, {"job": "job-A", "token": tok}, now, cfg)
+    require(env is not None, f"fence saat clock skew gagal: {err}")
+    require(env["gen"] == 6, "gen tetap naik monotonik walau at skew")
+    require(env["data"]["cash"] == 4321, "data skew tidak boleh ditimpa default")
+    snap = dict(env["data"])
+    snap["cash"] = 5000
+    ok_save, _ = do_save(ds, uid, {"job": "job-A", "token": tok}, env["gen"],
+                         env["at"], env["session"], snap, now + 1, cfg)
+    require(ok_save, "save sesi baru harus komit walau at lama di masa depan")
+    res = ds.update(
+        f"p_{uid}",
+        lambda old: save_transform(old, {"job": "job-O", "token": "tok-O"},
+                                   5, now + 7200,
+                                   {"job": "job-O", "token": "tok-O"},
+                                   {"cash": 9}, now + 2, cfg),
+    )
+    require(res["data"]["cash"] == 5000 and res["gen"] == 6,
+            "stale writer gen-5 WAJIB kalah walau at-nya masa depan")
+    return "skew at diatasi fencing, stale kalah"
+
+
+@scenario("re_fence_sendiri_berulang")
+def t_refence_self(cfg):
+    ds, ms, now, uid = FakeDataStore(), FakeMemoryStore(), 20_000_000, 26
+    ok, tok = claim_session(ms, uid, "job-A", "tok-A", now, cfg)
+    require(ok, "claim harus menang")
+    sess = {"job": "job-A", "token": tok}
+    env1, _ = fence_and_read(ds, uid, sess, now, cfg)
+    env2, _ = fence_and_read(ds, uid, sess, now + 1, cfg)
+    env3, _ = fence_and_read(ds, uid, sess, now + 2, cfg)
+    require(env1["gen"] == env2["gen"] == env3["gen"],
+            f"re-fence sendiri idempoten, dapat {env1['gen']}/{env2['gen']}/{env3['gen']}")
+    snap = dict(env3["data"])
+    snap["cash"] = 9090
+    ok_save, _ = do_save(ds, uid, sess, env1["gen"], env3["at"], env3["session"],
+                         snap, now + 3, cfg)
+    require(ok_save, "save setelah re-fence berulang harus komit")
+    require(ds.data[f"p_{uid}"]["gen"] == env1["gen"], "gen tidak boleh merayap")
+    return f"re-fence 3x idempoten gen={env1['gen']}"
+
+
+@scenario("release_ganda")
+def t_double_release(cfg):
+    ms, now, uid = FakeMemoryStore(), 21_000_000, 27
+    ok_a, tok_a = claim_session(ms, uid, "job-A", "tok-A", now, cfg)
+    require(ok_a, "claim A harus menang")
+    release_session(ms, uid, tok_a)
+    release_session(ms, uid, tok_a)  # ganda: no-op, tidak boleh error
+    release_session(ms, uid, "token-asing")  # tak dikenal: no-op
+    ok_b, tok_b = claim_session(ms, uid, "job-B", "tok-B", now + 1, cfg)
+    require(ok_b, "klaim ulang setelah release ganda harus menang")
+    require(verify_lock(ms, uid, tok_b, now + 1), "lease baru harus valid")
+    release_session(ms, uid, tok_b)
+    require(not verify_lock(ms, uid, tok_b, now + 2), "setelah release, lock hilang")
+    return "release ganda/asing no-op; re-claim ok"
 
 
 # ----------------------------------------------------------------------------

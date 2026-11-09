@@ -125,3 +125,109 @@
 - **R5 refresh PlotVisuals inkremental: DITUNDA.** Refresh 5-detik sudah murah
   (≤8 plot); diff inkremental berisiko desync visual yang tak terdeteksi semua
   gate tanpa Studio. Kerjakan setelah uji visual 8-pemain.
+
+## Addendum Agen 6 — audit ulang pasca-Master 7 (9 Nov 2026, read-only, tanpa runtime)
+
+> Tanpa runtime = tidak ada angka pengukuran. Semua dampak di bawah kualitatif.
+> Verifikasi klaim Master 7 dilakukan per path:line. Temuan baru diberi ID B1..;
+> ID A/R lama dirujuk statusnya (diterapkan / masih terbuka).
+
+### Verifikasi klaim Master 7 (perilaku tidak rusak)
+
+- **lastHud delta-push — OK, behavior-preserving.** `Main.server.luau:412-431`:
+  snapshot `cash|mult|locked|gained|level`, kirim hanya bila berubah;
+  pembersihan `Main.server.luau:785-791` (`lastPos/lastHud/rateLast/lastAdminCmd`
+  = nil saat `PlayerRemoving`). Display-correct: tak ada perubahan = label sudah
+  benar. Catatan: `gained` ikut snapshot sehingga tick dengan income>0 selalu
+  push 1 Hz saat tanaman grown — itu benar (angka memang berubah tiap detik).
+- **flush Analytics — OK.** `Analytics.luau:11-46`: `bump()` agregat per kunci
+  hari, 1 thread 60 dtk, `UpdateAsync` add (konkuren-aman), gagal = antre lagi.
+  API 6 fungsi utuh. Catatan: `BindToClose` tidak flush `pending` (rugi <=60 dtk
+  saat shutdown, dinyatakan dapat diterima) dan `pending` tumbuh bila DataStore
+  gagal terus — lihat B4 (P2).
+- **peta Owner 1-pass — OK.** `Main.server.luau:442-453`: satu
+  `plots:GetChildren()` per 5 dtk + peta `byOwner`, rebuilt tiap tick (tanpa
+  cache basi). `FindFirstChild("Owner")` per plot (<=8) sepele. `assignPlot` /
+  `releasePlot` (`Main.server.luau:697-730`) tetap scan per join/leave — wajar.
+- **early-break receipts — OK, identik perilaku.** `SaveSystem.luau:91-98`:
+  break saat count > 200, keputusan prune sama persis dengan hitung penuh.
+- **suara ke PlayerGui — OK dengan satu celah kecil.** `Sound.client.luau:22-24`:
+  `s.Parent = pg or workspace` — fallback `workspace` saat PlayerGui sesaat
+  hilang (jendela respawn) masih mereplikasi; sepele. Celah nyata adalah
+  kebocoran `Sound` bila `Ended` tak pernah fire — lihat B3 (P2).
+
+### Tabel per-UserId: dibersihkan / TIDAK saat PlayerRemoving
+
+| Tabel | Dibersihkan? | Bukti |
+|---|---|---|
+| `StealSystem` locks/cooldowns/channels + itemLocks miliknya | YA | `StealSystem.luau:116-124` |
+| `MoneyService` balances/multipliers | YA | `MoneyService.luau:90-93` |
+| `GamepassHandler` luckUntil | YA | `GamepassHandler.luau:85-87` |
+| `TreasureService` spots/lastAttempt/lastDig/lastPing | YA | `TreasureService.luau:275-280` |
+| `Main` lastPos/lastHud/rateLast/lastAdminCmd | YA | `Main.server.luau:785-791` |
+| `SaveSystem` cache/loadedOk/sessionToken/sessionGen | YA (parsial) | `SaveSystem.luau:583-591` |
+| **`SaveSystem` savedOnLeave — TIDAK (bocor + bug rejoin)** | **TIDAK -> B1** | `SaveSystem.luau:34,574-591`; `DropCache` (`:235-242`) membersihkannya tapi jalur leave normal tidak lewat `DropCache` |
+
+### Temuan baru (B) — dengan bukti kode, bukan tebakan
+
+| # | Sev | Lokasi | Masalah | Bukti |
+|---|---|--------|---------|-------|
+| B1 | **P0/P1** | `SaveSystem.luau:34,574-591` | `savedOnLeave[uid]` diset `true` saat leave tapi **tak pernah dibersihkan** (jalur leave tidak lewat `DropCache`). Akibat ganda: (a) tumbuh 1 entri per joiner unik selama umur server (bocor lambat); (b) **pemain yang rejoin server yang sama tidak pernah di-autosave lagi** karena loop autosave `if not savedOnLeave` (`:574-577`) melewatkannya permanen. | Baca `:583-591` vs `:235-242` vs `:574-579`; `ClaimSession` (`:160-196`) tidak mereset flag |
+| B2 | P1 | `StealSystem.luau:17-32` + `Main.server.luau:358` | A3 **belum diterapkan**: `inSafeZone` = `workspace:FindFirstChild(name, true)` **rekursif seluruh workspace** tiap `CanSteal`, dan `CanSteal` dipanggil **tiap tick 1 Hz per channel aktif**. Membesar seiring map. | `StealSystem.luau:27`; pemanggil `Main.server.luau:358` di loop tick |
+| B3 | P1/P2 | `Sound.client.luau:15-29` + `Hud.client.luau:115-129` | (a) Tiap `beep` membuat `Sound` + koneksi `Ended`; bila aset gagal / `Ended` tak fire, instance **tak pernah Destroy** -> akumulasi di PlayerGui. (b) A6 **belum diterapkan**: pulse `TweenService:Create` x2 + `task.delay` **tiap tick saat cash naik** (= tiap detik saat panen) di tiap client; restore `Size = base` memakai ukuran basi bila `fitHud` resize di tengah tween. | `Sound.client.luau:19-28`; `Hud.client.luau:119-128` |
+| B4 | P2 | `Analytics.luau:25-46` | `pending` tumbuh tak terbatas bila `UpdateAsync` gagal terus (re-antre + event baru). Maks ~7 kunci, kecil — cukup batasi. | `:28-43` |
+| B5 | P2 | `Leaderboard.luau:21-32` | A8 **belum diterapkan**: 1 thread + 2 `require` + polling 2 dtk **per pemain**. Tak bocor (`while player.Parent` keluar saat leave) tapi bangun sia-sia x N. | `:21-32` |
+| B6 | P2 | `StealPrompt.client.luau:46-51` + `InventoryUI.client.luau:179-190` | A9 & A7 **belum diterapkan**: `ChildAdded` menahan thread `task.wait(1)` per plot baru (prompt telat 1 dtk); loop 5 dtk cek teks tombol tidak sejajar refresh `ids` 15 dtk. Fungsional benar, hanya limbah/UX kecil. | path:line sesuai |
+| B7 | P2 | `Main.server.luau:333-345,413-415` | `MoneyService.Get` dipanggil 3-4x per pemain per tick. Sepele (table lookup) — satukan bila menyentuh loop lagi. Bukan prioritas. | `:340-345,413` |
+
+R5 (refresh visual destroy-all tiap 5 dtk, `PlotVisuals.luau:36-42`) tetap
+penyumbang churn terbesar (<=8 plot x ~4 instance tiap 5 dtk + replikasi) namun
+**tetap DITUNDA** — diff inkremental tanpa uji visual Studio berisiko desync.
+R3 (polling Shop 10 dtk / Inventory 15 dtk) tetap **DITOLAK sementara** —
+beban ~1,3 req/dtk @8 pemain, read-only + rate-limit 2 dtk.
+
+### Patch AMAN yang diusulkan (behavior-preserving, tanpa korbankan keamanan)
+
+1. **B1 — reset `savedOnLeave` saat sesi baru (wajib).** `SaveSystem.luau`
+   (`ClaimSession`, setelah token lolos): `savedOnLeave[player.UserId] = nil`.
+   Satu baris, memperbaiki autosave-rejoin + menghentikan bocor lambat.
+2. **B2 — cache SafeZone (A3).** Di `StealSystem.luau` tambah
+   `local safeZonePart: BasePart? = nil` + binder sekali +
+   `workspace.DescendantAdded` untuk nama `Config.SafeZoneName`;
+   `inSafeZone` cek jarak ke `safeZonePart` saja, fallback `false` bila nil.
+   Aturan jarak tak berubah.
+3. **B3a — pulse HUD hanya untuk peristiwa besar (A6).** Di
+   `Hud.client.luau:119-128`, pulse hanya bila
+   `data.type == "steal_ok" or data.type == "treasure_found"`, atau ambang
+   `cash - lastCash >= 1000`; tick income biasa hanya update teks.
+4. **B3b — pengaman `Sound`.** Di `Sound.client.luau:26-28`, tambah
+   `task.delay(5, function() if s and s.Parent then s:Destroy() end end)`
+   sebagai jaring bila `Ended` tak fire. Perilaku bunyi tak berubah.
+5. **B4 — batasi `pending`.** Di `Analytics.luau`, bila ukuran `pending` > 500
+   maka drop event baru (analitik boleh hilang; data pemain tidak lewat sini).
+6. **B5 — lipat leaderboard ke tick Main (A8).** Hapus thread
+   `Leaderboard.luau:21-32`; di loop tick `Main.server.luau` tulis
+   `leaderstats.Cash/Rebirths` bila ada (display-only, 1 Hz vs 2 Hz).
+7. **B6 — hapus `task.wait(1)` (A9).** `StealPrompt.client.luau:46-51`:
+   hook langsung di `ChildAdded` (`hookPlot` sudah idempoten).
+
+### Checklist profiling 1 / 2 / 8 pemain (dapat diulang di Studio)
+
+> Jalankan SETELAH patch B1; ulangi penuh bila R5 dikerjakan. Konsol server:
+> View -> MicroProfiler + Memory + Network + Output.
+> `Config.ServerSize = 8`, `IncomeTick = 1`. Isi angka aktual, jangan klaim kosong.
+
+| # | Skenario | Langkah | Yang dicatat | Lulus bila |
+|---|---|----------|--------------|------------|
+| C1 | 1 pemain baseline | Play 1 pemain -> tanam 8 slot -> paksa event `EventManager.Start(1,"meteor")` -> 60 dtk | server frame ms, client frame ms, Lua memori server, `UpdateHud` byte/dtk, jumlah `Crop` (stabil, tak tumbuh) | `Crop` stabil; nol error DataStore/MemoryStore |
+| C2 | 2 pemain steal | 2 pemain; A tanam s.d. grown; B tahan E 3 dtk di plot A selama channel | spike `inSafeZone`/tick di MicroProfiler; steal 1x sukses; lock kedua langsung = `cooldown` (tak macet) | channel selesai/batal bersih; tak ada item terkunci permanen |
+| C3 | 8 pemain beban | 8 pemain, tiap >=4 slot; jalan 5 mnt; paksa `Save` tiap pemain | heartbeat ms tiap 60 dtk, `UpdateHud` KB/dtk, `Crop` total stabil tiap refresh 5 dtk, error `throttled` | frametime < 2x baseline C1; nol `throttled`; nol `Sound`/`Crop` bocor pasca-stop |
+| C4 | rejoin (khusus B1) | 1 pemain join -> leave -> **rejoin server sama** -> tunggu 2x `AutosaveInterval` | Output: ada save rejoin (tak ada `skip save`); autosave rejoin jalan | autosave rejoin jalan |
+
+### Disposisi R3 / R5 yang masih terbuka (Agen 6)
+
+- **R3 polling ke push: tetap DITOLAK sementara.** Syarat buka ulang: kebutuhan
+  fitur realtime + slot uji Studio C3 hijau.
+- **R5 visual inkremental: tetap DITUNDA.** Syarat kerjakan: uji C3 hijau +
+  uji visual 8-pemain khusus (bandingkan `Size/Color/Text` per refresh,
+  pastikan tanpa flicker/hilang).

@@ -24,14 +24,22 @@ function PlotManager.Plant(profile, itemId: string): (boolean, string?)
 	if not slot then
 		return false, "plot_penuh"
 	end
-	-- roll mutasi: Normal 70 / Gold 15 / Dark 10 / Rainbow 5
+	-- roll mutasi dari Config.MutationRate (bobot %); fallback aman bila tabel hilang.
+	-- Urutan kumulatif dari atas: Rainbow > Dark > Gold > Normal.
+	local rates = Config.MutationRate or { Normal = 70, Gold = 15, Dark = 10, Rainbow = 5 }
+	local wGold = if type(rates.Gold) == "number" then rates.Gold else 15
+	local wDark = if type(rates.Dark) == "number" then rates.Dark else 10
+	local wRainbow = if type(rates.Rainbow) == "number" then rates.Rainbow else 5
+	local tRainbow = 100 - wRainbow -- 95
+	local tDark = tRainbow - wDark -- 85
+	local tGold = tDark - wGold -- 70
 	local roll = math.random(100)
 	local mut = "Normal"
-	if roll > 95 then
+	if roll > tRainbow then
 		mut = "Rainbow"
-	elseif roll > 85 then
+	elseif roll > tDark then
 		mut = "Dark"
-	elseif roll > 70 then
+	elseif roll > tGold then
 		mut = "Gold"
 	end
 	profile.slots[tostring(slot)] = {

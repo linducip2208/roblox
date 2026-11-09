@@ -3,6 +3,11 @@
 local Leaderboard = {}
 
 function Leaderboard.Attach(player: Player, profile)
+	-- Guard duplikat: Attach 2x untuk pemain sama tidak boleh bikin leaderstats
+	-- ganda + thread sync bocor.
+	if player:FindFirstChild("leaderstats") then
+		return
+	end
 	local ls = Instance.new("Folder")
 	ls.Name = "leaderstats"
 	ls.Parent = player

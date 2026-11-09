@@ -5,7 +5,7 @@ owner di dashboard/Studio. [MANUSIA] = uji Play di Studio, tidak bisa otomatis.
 
 ## Gate MESIN (harus hijau — aktual: hijau kecuali 2 BLOCKED owner)
 
-Hasil aktual `python tools/verify.py` pada status commit bersih: **44 PASS, 0 FAIL,
+Hasil aktual `python tools/verify.py` pasca-integrasi: **52 PASS, 0 FAIL,
 2 BLOCKED, 6 NOT TESTED.** (Run berikutnya sempat FAIL selene/stylua karena
 WIP uncommitted agen paralel di `src/` — bukan kondisi repo yang di-commit.)
 

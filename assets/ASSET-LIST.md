@@ -1,6 +1,7 @@
-# ASSET LIST — Steal a Kebun (total 34 file)
+# ASSET LIST — Steal a Kebun (total 34 file TERGENERASI di `assets/generated/`)
 
-Hasil ComfyUI -> taruh di `assets/out/` dengan nama persis, lalu upload ke Roblox.
+Hasil ComfyUI final ada di `assets/generated/` (34 file, manifest cocok 34/34 —
+status 9 Nov 2026). `assets/out/` hanya berisi 92 placeholder PIL (JANGAN upload).
 
 ## 1. WAJIB (publish blocker)
 | # | File | Ukuran | Dipakai | Prompt base |
@@ -22,7 +23,11 @@ Hasil ComfyUI -> taruh di `assets/out/` dengan nama persis, lalu upload ke Roblo
 
 Semua: `chibi fruit character, big glossy eyes, tiny arms, studio lighting, white background, centered, game icon, no text, no watermark`
 
-## 3. UI + BADGE
+## 3. UI (8 ikon aktual di `assets/generated/`, gantikan daftar lama di bawah)
+| File aktual | Ukuran | Dipakai |
+|-------------|--------|---------|
+| ui-shovel/ui-compass/ui-chest/ui-coin/ui-key/ui-lock/ui-gift/ui-trophy | 512x512 | Ikon UI + fallback teks |
+Rencana badge lama di bawah ini SUPERSEDED (belum digenerate, bukan blocker beta):
 | File | Ukuran | Dipakai |
 |------|--------|---------|
 | badge-rebirth.png | 512x512 | Badge rebirth 1 |
@@ -36,4 +41,4 @@ Semua: `chibi fruit character, big glossy eyes, tiny arms, studio lighting, whit
 3. Upload: Create -> Images -> tunggu moderasi -> copy Asset ID ke `AssetMap.luau` (dibuat otomatis di bawah)
 4. Test di Studio dengan lighting default, jangan gelap
 
-Status: [ ] belum generate — ganti jadi [x] satu per satu.
+Status: [x] 34/34 tergenerate di `assets/generated/` (UPLOAD_PENDING, tunggu moderasi owner) — centang lama "[ ] belum generate" usang per 9 Nov 2026.

@@ -228,7 +228,7 @@ for h, (i, extra) in handlers.items():
     missing_p = [p for p in extra if f"type({p})" not in window]
     if missing_p:
         bad_handlers.append(f"{h}:{','.join(missing_p)}")
-check("remote-arg-guards", not bad_handlers,
+check("remote-arg-guards", not bad_handlers and len(handlers) >= 10 and n_params >= 6,
       f"tanpa guard: {bad_handlers}" if bad_handlers else f"{len(handlers)} handler, {n_params} param terjaga")
 
 # 14b-2. Jawaban difloor + rentang 1..4 (tolak float liar, 0, negatif, raksasa).
@@ -318,6 +318,93 @@ check("client-no-datastore", not ds_touch, f"sentuh DS: {ds_touch}" if ds_touch 
 # 14b-17. Cap income dua lapis: TickIncome (PlotManager) + Add (MoneyService).
 check("income-cap-config", "MaxCashPerTick" in plot_src and "MaxCashPerTick" in money_src,
       "tick cap + add hardcap")
+
+# 14c. REGRESI Master 8: delta-push HUD (R1), antrean analitik (R2), temuan A2/A3/A4,
+# snapshot hygiene (delta-save), flush analitik saat keluar. Semua uji SEMANTIK:
+# urutan kode + cakupan + konsistensi, bukan sekadar "string ada".
+analytics_src = luas.get("Server/Analytics.luau", "")
+visuals_src = luas.get("Server/PlotVisuals.luau", "")
+hud_src = luas.get("Client/Hud.client.luau", "")
+
+# 14c-1. R1 delta-push HUD: snapshot 5 field + FireClient tick HANYA di dalam gate
+# berubah + cleanup lastHud saat leave (tanpa cleanup = bocor memori 8 pemain).
+_gate_i = main_src.find("if snap ~= lastHud")
+_fire_i = main_src.find('type = "tick"', _gate_i)
+_rem_i = main_src.find("Players.PlayerRemoving")
+_snap_fields = all(k in main_src for k in ("hudMult", "hudLocked", "gained", "hudLevel"))
+check("m8-hud-deltapush", "lastHud" in main_src and _snap_fields
+      and 0 <= _gate_i < _fire_i <= _gate_i + 800
+      and _rem_i >= 0 and "lastHud[p.UserId] = nil" in main_src[_rem_i:],
+      "snapshot+gate+cleanup" if 0 <= _gate_i else "gate delta-push hilang")
+
+# 14c-2. R2 antrean analitik: agregat di memori (bukan spawn per event), SATU thread
+# flush, tambah via UpdateAsync (aman konkuren antar server), gagal = antre lagi,
+# kunci harian agar ganti hari tak campur, API 6 fungsi utuh + masih dipanggil Main.
+_api6 = all(f"function Analytics.{f}" in analytics_src for f in ("Join", "Buy", "Steal", "Rebirth", "Riddle", "Event"))
+_used = sum(1 for f in ("Join", "Buy", "Steal", "Rebirth", "Riddle") if f"Analytics.{f}(" in main_src)
+_code_only = re.sub(r"--.*", "", analytics_src)  # komentar bisa sebut UpdateAsync
+check("m8-analytics-queue", _api6 and _code_only.count("task.spawn") == 1
+      and _code_only.count("UpdateAsync") == 1 and "(old or 0) + v" in _code_only
+      and "pending[k] = (pending[k] or 0) + v" in _code_only
+      and 'os.date("!%Y-%m-%d")' in analytics_src and _used >= 4,
+      f"spawn={_code_only.count('task.spawn')} upd={_code_only.count('UpdateAsync')} dipakai={_used}/5")
+
+# 14c-3. A2: Refresh visual (tiap 5 dtk/pemain) TAK BOLEH WaitForChild (yield di
+# jalur panas); AssetMap diambil sekali via cache modul + FindFirstChild.
+_refresh_tail = visuals_src[visuals_src.find("function PlotVisuals.Refresh"):]
+check("m8-perf-a2-assetmap-cache", "function PlotVisuals.Refresh" in visuals_src
+      and "WaitForChild" not in _refresh_tail and "getAssetMap()" in _refresh_tail
+      and "AssetMapCache" in visuals_src and 'FindFirstChild("AssetMap")' in visuals_src,
+      "cache modul, tanpa yield" if "WaitForChild" not in _refresh_tail else "Refresh masih yield")
+
+# 14c-4. A3: CanSteal (tiap tick per channel) TAK BOLEH scan rekursif workspace
+# per panggilan; referensi zona di-cache di modul + di-rebind saat DescendantAdded.
+_rec_scan = re.findall(r"FindFirstChild\([^)]*,\s*true\)", steal_src)
+check("m8-perf-a3-safezone-cache", not _rec_scan
+      and ("safeZonePart" in steal_src or "SafeZoneCache" in steal_src)
+      and "DescendantAdded" in steal_src,
+      "zona di-cache" if not _rec_scan else f"scan rekursif per tick: {_rec_scan}")
+
+# 14c-5. A4: EventManager.Multiplier dihitung SEKALI per tick (hoist), bukan
+# per pemain per detik; A1: scan plots SEKALI per tick visual via peta Owner.
+_tick_head = main_src.find("-- INCOME + STEAL CHANNEL loop")
+_tick_end = main_src.find("-- VISUAL refresh")
+_tick = main_src[_tick_head:_tick_end] if 0 <= _tick_head < _tick_end else ""
+_mi = _tick.find("EventManager.Multiplier")
+_li = _tick.find("for _, p in Players:GetPlayers()")
+_vis_end = main_src.find("-- ADMIN chat")
+_vis = main_src[_tick_end:_vis_end] if 0 <= _tick_end < _vis_end else ""
+check("m8-perf-a4-mult-hoist", _tick.count("EventManager.Multiplier") == 1
+      and 0 <= _mi < _li and "local tickMult" in _tick, "1x per tick, bukan Nx")
+check("m8-perf-a1-visual-scan", _vis.count("plots:GetChildren()") == 1 and "byOwner" in _vis,
+      "1 scan + peta Owner per tick visual" if _vis.count("plots:GetChildren()") == 1
+      else f"{_vis.count('plots:GetChildren()')} scan per tick")
+
+# 14c-6. Snapshot hygiene (delta-save): SEMUA kunci runtime yang ditulis ke profil
+# di Load/Save WAJIB dikecualikan stripRuntime agar tak bocor ke DataStore;
+# save menulis old.data = snap dari ValidateProfile (bukan tabel mentah).
+_strip_m = re.search(r"local function stripRuntime\(profile\).*?end", save_src, re.S)
+_excl = set(re.findall(r'k\s*~=\s*"([^"]+)"', _strip_m.group(0))) if _strip_m else set()
+_written = set(re.findall(r"(?:^|\s)(?:d|data|profile)\.(_\w+|offlineEarned)\s*=", save_src, re.M))
+_snap_m = re.search(r"local function snapshot\(profile\).*?end", save_src, re.S)
+check("m8-save-snapshot-hygiene", bool(_strip_m) and _written and _written <= _excl
+      and "old.data = snap" in save_src and "snapshot(ValidateProfile(d)" in save_src
+      and bool(_snap_m) and "stripRuntime" in _snap_m.group(0),
+      f"runtime {sorted(_written)} steril" if _written <= _excl else f"bocor: {sorted(_written - _excl)}")
+
+# 14c-7. Flush analitik saat keluar: Analytics WAJIB expose fungsi flush yang
+# menguras pending via UpdateAsync, dan dipanggil dari jalur leave/shutdown
+# (tanpa ini, 60 dtk terakhir hilang tiap restart/shutdown).
+_flush_m = re.search(r"function Analytics\.(Flush\w*)", analytics_src)
+_flush_body = ""
+if _flush_m:
+    _fb = analytics_src[_flush_m.start():]
+    _flush_body = _fb[:_fb.find("\nend", _fb.find("\n", 60)) + 4] if "\nend" in _fb else ""
+_tail_all = main_src[_rem_i:] + save_src[save_src.find("game:BindToClose"):]
+_called = bool(_flush_m) and (f"Analytics.{_flush_m.group(1)}" in _tail_all or f"Analytics.{_flush_m.group(1)}" in save_src)
+check("m8-analytics-flush-exit", bool(_flush_m) and "pending" in _flush_body
+      and "UpdateAsync" in _flush_body and _called,
+      "flush+terpanggil saat exit" if _flush_m else "tak ada Analytics.Flush (window 60 dtk hilang saat shutdown)")
 
 # 15. Gerbang Selene + StyLua (lewati jika biner tidak ada di mesin ini)
 

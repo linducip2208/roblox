@@ -68,6 +68,10 @@ Aturan:
   Roblox akan **retry otomatis**. Ini disengaja agar pembelian tidak hangus.
 - Retry dengan `PurchaseId` yang sama = **tidak dobel grant** (cek
   `profile.receipts`; save gagal = tanda dicabut agar retry grant ulang).
+- `PurchaseId` kosong = **ditolak** (`NotProcessedYet`, tanpa grant): grant tanpa
+  kunci idempotensi bisa dobel saat retry. Receipt produksi selalu punya ID.
+- `PromptGamePassPurchaseFinished` diabaikan bila slot `DoubleMoney = 0`
+  (tidak ada panggilan API dengan ID 0 yang tak valid).
 - Jangan grant reward dari Remote client manapun. Alur sah satu-satunya:
   client prompt ID server → Roblox memproses pembayaran → server grant via
   receipt/ownership-check.

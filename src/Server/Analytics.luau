@@ -18,6 +18,30 @@ local function bump(key: string, delta: number)
 	pending[k] = (pending[k] or 0) + delta
 end
 
+-- Flush sinkron: kuras pending via UpdateAsync add (aman konkuren antar server).
+-- Dipakai thread berkala di bawah + dipanggil eksplisit saat shutdown (BindToClose)
+-- agar window 60 dtk tidak hilang saat restart. BUKAN data pemain.
+function Analytics.Flush()
+	if not store then
+		return
+	end
+	local batch = {}
+	for k, v in pending do
+		batch[k] = v
+		pending[k] = nil
+	end
+	for k, v in batch do
+		if v ~= 0 then
+			local ok = pcall(store.UpdateAsync, store, k, function(old)
+				return (old or 0) + v
+			end)
+			if not ok then
+				pending[k] = (pending[k] or 0) + v
+			end
+		end
+	end
+end
+
 -- Flush tiap 60 detik (1 thread, bukan 1 thread per event). Kunci dihitung saat
 -- bump sehingga ganti hari otomatis memakai kunci baru. Gagal flush = antre lagi.
 -- Jendela hilang maksimal 60 detik saat crash: dapat diterima untuk analitik
@@ -25,23 +49,7 @@ end
 task.spawn(function()
 	while true do
 		task.wait(FLUSH_INTERVAL)
-		if store then
-			local batch = {}
-			for k, v in pending do
-				batch[k] = v
-				pending[k] = nil
-			end
-			for k, v in batch do
-				if v ~= 0 then
-					local ok = pcall(store.UpdateAsync, store, k, function(old)
-						return (old or 0) + v
-					end)
-					if not ok then
-						pending[k] = (pending[k] or 0) + v
-					end
-				end
-			end
-		end
+		Analytics.Flush()
 	end
 end)
 

@@ -26,6 +26,12 @@ local function beep(id: string, vol: number)
 	s.Ended:Connect(function()
 		s:Destroy()
 	end)
+	-- Backstop: bila Ended tak fire (asset gagal/streaming), jangan bocor.
+	task.delay(5, function()
+		if s.Parent then
+			s:Destroy()
+		end
+	end)
 end
 
 UpdateHud.OnClientEvent:Connect(function(d)
